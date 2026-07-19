@@ -1,0 +1,172 @@
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Segoe UI", sans-serif;
+}
+
+body{
+    background: #eef5fb;
+}
+
+.login-container{
+    width: 100%;
+    height: 100vh;
+    display: flex;
+}
+
+/*======================
+        IZQUIERDA
+=======================*/
+
+.left-side{
+    width: 60%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    background: white;
+}
+
+.hero-image{
+    width: 80%;
+    max-width: 700px;
+    height: auto;
+    object-fit: contain;
+}
+
+/*======================
+        DERECHA
+=======================*/
+
+.right-side{
+    width: 40%;
+    background: #A9DEFF;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px;
+}
+
+/*======================
+        LOGIN
+=======================*/
+
+.login-box{
+    width: 360px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+/* Logo */
+
+.logo{
+    width: 190px;
+    margin-bottom: 18px;
+}
+
+/* Título */
+
+.login-box h2{
+    font-size: 32px;
+    color: #1F4F82;
+    margin-bottom: 8px;
+    font-weight: 700;
+}
+
+/* Texto */
+
+.login-box p{
+    color: #34506A;
+    margin-bottom: 28px;
+    font-size: 15px;
+}
+
+/* Inputs */
+
+.login-box input{
+    width: 100%;
+    padding: 15px 18px;
+    margin-bottom: 18px;
+
+    border: none;
+    border-radius: 10px;
+
+    background: #F7FAFC;
+
+    color: #2C3E50;
+
+    font-size: 15px;
+
+    transition: .25s;
+}
+
+.login-box input::placeholder{
+    color: #7C8A98;
+}
+
+.login-box input:focus{
+    outline: none;
+    background: white;
+    box-shadow: 0 0 0 2px rgba(25,118,210,.25);
+}
+
+/* Botón */
+
+.login-box button{
+    width: 100%;
+    padding: 15px;
+
+    border: none;
+    border-radius: 10px;
+
+    background: #1976D2;
+    color: white;
+
+    font-size: 16px;
+    font-weight: 600;
+
+    cursor: pointer;
+
+    transition: .3s;
+}
+
+.login-box button:hover{
+    background: #1565C0;
+    transform: translateY(-2px);
+}
+
+/*======================
+      RESPONSIVE
+=======================*/
+
+@media(max-width:900px){
+
+    .login-container{
+        flex-direction: column;
+    }
+
+    .left-side{
+        width: 100%;
+        height: 40vh;
+    }
+
+    .right-side{
+        width: 100%;
+        height: 60vh;
+    }
+
+    .hero-image{
+        width: 70%;
+    }
+
+    .logo{
+        width: 170px;
+    }
+
+    .login-box{
+        width: 90%;
+    }
+
+}
