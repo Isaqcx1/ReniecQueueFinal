@@ -170,3 +170,55 @@ body{
     }
 
 }
+.input-label {
+    width: 100%;
+    margin-bottom: 7px;
+    color: #34506a;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.login-message {
+    width: 100%;
+    margin-bottom: 18px;
+    padding: 12px 14px;
+    border-radius: 10px;
+    background-color: #fff0f0;
+    border: 1px solid #f1b8b8;
+    color: #c62828;
+    font-size: 14px;
+    text-align: center;
+}
+
+.login-box button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.login-help {
+    margin-top: 18px;
+    color: #52697e;
+    font-size: 13px;
+    text-align: center;
+}
+
+.login-message {
+    width: 100%;
+    margin-bottom: 18px;
+    padding: 12px 15px;
+
+    background: #fff1f1;
+    border: 1px solid #efb5b5;
+    border-radius: 10px;
+
+    color: #c62828;
+    font-size: 14px;
+    text-align: center;
+}
+
+.login-box button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    transform: none;
+}

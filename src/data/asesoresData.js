@@ -1,0 +1,26 @@
+export const asesores = [
+    {
+        id: 1,
+        usuario: "ASE001",
+        password: "123456",
+        nombres: "Isaac Gavidia",
+        correo: "Isaac@reniec.gob.pe",
+        rol: "Asesor",
+        sede: "RENIEC San Isidro",
+        ventanilla: "04",
+        turnoTrabajo: "Mañana",
+        activo: true,
+    },
+    {
+        id: 2,
+        usuario: "ASE002",
+        password: "123456",
+        nombres: "María Torres",
+        correo: "maria.torres@reniec.gob.pe",
+        rol: "Asesor",
+        sede: "RENIEC Miraflores",
+        ventanilla: "02",
+        turnoTrabajo: "Tarde",
+        activo: true,
+    },
+];
