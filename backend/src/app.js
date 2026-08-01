@@ -1,11 +1,13 @@
 import express from "express";
 import cors from "cors";
 
+
 import {
     comprobarConexion,
 } from "./config/database.js";
 
 import asesorRoutes from "./routes/asesorRoutes.js";
+import turnoRoutes from "./routes/turnoRoutes.js";
 
 const app = express();
 
@@ -24,6 +26,10 @@ app.use(express.json());
 app.use(
     "/api/asesores",
     asesorRoutes
+);
+app.use(
+    "/api/turnos",
+    turnoRoutes
 );
 
 app.get("/", (req, res) => {
