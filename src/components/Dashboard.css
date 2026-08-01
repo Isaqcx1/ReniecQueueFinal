@@ -639,3 +639,44 @@ button {
         width: 100%;
     }
 }
+
+.advisor-details {
+    margin-top: 25px;
+    padding: 22px;
+
+    background: white;
+    border-radius: 18px;
+
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+
+    box-shadow: 0 6px 20px
+        rgba(31, 79, 130, 0.08);
+}
+
+.detail-row {
+    padding: 15px;
+    border-radius: 12px;
+    background: #f2f8fd;
+
+    display: flex;
+    flex-direction: column;
+}
+
+.detail-row span {
+    color: #71869a;
+    font-size: 13px;
+}
+
+.detail-row strong {
+    margin-top: 6px;
+    color: #1f4f82;
+    font-size: 15px;
+}
+
+@media (max-width: 680px) {
+    .advisor-details {
+        grid-template-columns: 1fr;
+    }
+}

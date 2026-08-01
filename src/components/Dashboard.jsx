@@ -1,17 +1,17 @@
 import { useNavigate } from "react-router-dom";
 
 import "../components/Dashboard.css";
-
 import logo from "../img/logor.png";
 
 export default function Dashboard() {
     const navigate = useNavigate();
 
-    const asesorGuardado =
-        localStorage.getItem("asesorSesion");
+    const sesionGuardada = localStorage.getItem(
+        "asesorSesion"
+    );
 
-    const asesor = asesorGuardado
-        ? JSON.parse(asesorGuardado)
+    const asesor = sesionGuardada
+        ? JSON.parse(sesionGuardada)
         : null;
 
     const cerrarSesion = () => {
@@ -24,8 +24,18 @@ export default function Dashboard() {
 
     const mostrarProximamente = (modulo) => {
         alert(
-            `${modulo} estará disponible en el siguiente Sprint.`
+            `${modulo} será desarrollado durante el Sprint 3.`
         );
+    };
+
+    const formatearTurnoTrabajo = (turno) => {
+        const turnos = {
+            MANANA: "Mañana",
+            TARDE: "Tarde",
+            NOCHE: "Noche",
+        };
+
+        return turnos[turno] || turno;
     };
 
     if (!asesor) {
@@ -47,7 +57,9 @@ export default function Dashboard() {
 
                 <nav className="sidebar-menu">
                     <button className="menu-option active">
-                        <span className="menu-icon">⌂</span>
+                        <span className="menu-icon">
+                            ⌂
+                        </span>
 
                         <span>Dashboard</span>
                     </button>
@@ -60,7 +72,9 @@ export default function Dashboard() {
                             )
                         }
                     >
-                        <span className="menu-icon">☷</span>
+                        <span className="menu-icon">
+                            ☷
+                        </span>
 
                         <span>
                             Gestión de atención
@@ -77,7 +91,9 @@ export default function Dashboard() {
                             )
                         }
                     >
-                        <span className="menu-icon">♙</span>
+                        <span className="menu-icon">
+                            ♙
+                        </span>
 
                         <span>Usuarios</span>
 
@@ -92,7 +108,9 @@ export default function Dashboard() {
                             )
                         }
                     >
-                        <span className="menu-icon">▥</span>
+                        <span className="menu-icon">
+                            ▥
+                        </span>
 
                         <span>Reportes</span>
 
@@ -107,7 +125,9 @@ export default function Dashboard() {
                             )
                         }
                     >
-                        <span className="menu-icon">●</span>
+                        <span className="menu-icon">
+                            ●
+                        </span>
 
                         <span>Mi perfil</span>
 
@@ -118,13 +138,13 @@ export default function Dashboard() {
                 <div className="advisor-sidebar">
                     <div className="advisor-avatar">
                         {asesor.nombres
-                            .charAt(0)
+                            ?.charAt(0)
                             .toUpperCase()}
                     </div>
 
                     <div className="advisor-sidebar-data">
                         <strong>
-                            {asesor.nombres}
+                            {asesor.nombreCompleto}
                         </strong>
 
                         <span>
@@ -150,26 +170,26 @@ export default function Dashboard() {
 
                         <h1>
                             Bienvenido,{" "}
-                            {asesor.nombres.split(" ")[0]}
+                            {asesor.nombres}
                         </h1>
 
                         <p className="dashboard-description">
-                            Aquí podrá gestionar la atención
-                            de los ciudadanos y consultar la
-                            información de su jornada.
+                            Su sesión fue validada
+                            correctamente mediante el backend
+                            y la base de datos PostgreSQL.
                         </p>
                     </div>
 
                     <div className="header-profile">
                         <div className="header-avatar">
                             {asesor.nombres
-                                .charAt(0)
+                                ?.charAt(0)
                                 .toUpperCase()}
                         </div>
 
                         <div>
                             <strong>
-                                {asesor.nombres}
+                                {asesor.nombreCompleto}
                             </strong>
 
                             <span>
@@ -190,9 +210,9 @@ export default function Dashboard() {
                         </h2>
 
                         <p>
-                            Su cuenta se encuentra activa y
-                            lista para comenzar la jornada de
-                            atención.
+                            La cuenta se encuentra activa y
+                            asignada a una sede y ventanilla
+                            de atención.
                         </p>
                     </div>
 
@@ -205,11 +225,12 @@ export default function Dashboard() {
 
                 <section className="section-header">
                     <div>
-                        <h2>Información asignada</h2>
+                        <h2>
+                            Información del asesor
+                        </h2>
 
                         <p>
-                            Datos correspondientes a su
-                            jornada de trabajo.
+                            Datos obtenidos desde PostgreSQL.
                         </p>
                     </div>
                 </section>
@@ -221,7 +242,9 @@ export default function Dashboard() {
                         </div>
 
                         <div className="card-information">
-                            <span>Sede asignada</span>
+                            <span>
+                                Sede asignada
+                            </span>
 
                             <strong>
                                 {asesor.sede}
@@ -235,7 +258,9 @@ export default function Dashboard() {
                         </div>
 
                         <div className="card-information">
-                            <span>Ventanilla</span>
+                            <span>
+                                Ventanilla
+                            </span>
 
                             <strong>
                                 {asesor.ventanilla}
@@ -250,11 +275,13 @@ export default function Dashboard() {
 
                         <div className="card-information">
                             <span>
-                                Turno de trabajo
+                                Turno laboral
                             </span>
 
                             <strong>
-                                {asesor.turnoTrabajo}
+                                {formatearTurnoTrabajo(
+                                    asesor.turnoTrabajo
+                                )}
                             </strong>
                         </div>
                     </article>
@@ -266,7 +293,7 @@ export default function Dashboard() {
 
                         <div className="card-information">
                             <span>
-                                Estado del asesor
+                                Estado
                             </span>
 
                             <strong className="available">
@@ -274,6 +301,49 @@ export default function Dashboard() {
                             </strong>
                         </div>
                     </article>
+                </section>
+
+                <section className="advisor-details">
+                    <div className="detail-row">
+                        <span>
+                            Código del asesor
+                        </span>
+
+                        <strong>
+                            {asesor.usuario}
+                        </strong>
+                    </div>
+
+                    <div className="detail-row">
+                        <span>
+                            Código de sede
+                        </span>
+
+                        <strong>
+                            {asesor.codigoSede}
+                        </strong>
+                    </div>
+
+                    <div className="detail-row">
+                        <span>
+                            Correo institucional
+                        </span>
+
+                        <strong>
+                            {asesor.correo ||
+                                "No registrado"}
+                        </strong>
+                    </div>
+
+                    <div className="detail-row">
+                        <span>
+                            Dirección de sede
+                        </span>
+
+                        <strong>
+                            {asesor.direccionSede}
+                        </strong>
+                    </div>
                 </section>
 
                 <section className="sprint-information">
@@ -287,9 +357,10 @@ export default function Dashboard() {
                         </h3>
 
                         <p>
-                            El asesor inició sesión
-                            correctamente y puede acceder a
-                            su panel personalizado.
+                            El asesor inició sesión con una
+                            cuenta registrada en PostgreSQL,
+                            ingresó a una ruta protegida y
+                            puede cerrar su sesión.
                         </p>
                     </div>
                 </section>
