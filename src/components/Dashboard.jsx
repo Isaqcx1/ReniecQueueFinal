@@ -67,9 +67,7 @@ export default function Dashboard() {
                     <button
                         className="menu-option"
                         onClick={() =>
-                            mostrarProximamente(
-                                "Gestión de atención"
-                            )
+                            navigate("/gestion-atencion")
                         }
                     >
                         <span className="menu-icon">
@@ -79,8 +77,6 @@ export default function Dashboard() {
                         <span>
                             Gestión de atención
                         </span>
-
-                        <small>Próximamente</small>
                     </button>
 
                     <button

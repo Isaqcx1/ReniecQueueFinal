@@ -10,7 +10,7 @@ import {
 import Login from "./components/Login.jsx";
 import Dashboard from "./components/Dashboard.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
-
+import GestionAtencion from "./components/GestionAtencion.jsx";
 function LoginRoute() {
     const sesion = localStorage.getItem(
         "asesorSesion"
@@ -58,6 +58,10 @@ export default function App() {
                             replace
                         />
                     }
+                />
+                <Route
+                    path="/gestion-atencion"
+                    element={<GestionAtencion />}
                 />
 
             </Routes>
