@@ -481,3 +481,342 @@ export async function obtenerColaPorSede(req, res) {
         });
     }
 }
+export async function llamarSiguienteTurno(req, res) {
+    const client = await pool.connect();
+
+    try {
+        const { idAsesor } = req.body;
+        const idAsesorNumero = Number(idAsesor);
+
+        if (
+            !Number.isInteger(idAsesorNumero) ||
+            idAsesorNumero <= 0
+        ) {
+            return res.status(400).json({
+                ok: false,
+                mensaje:
+                    "El identificador del asesor no es válido.",
+            });
+        }
+
+        await client.query("BEGIN");
+
+        // Buscar los datos del asesor.
+        const resultadoAsesor = await client.query(
+            `
+            SELECT
+                a.id_asesor,
+                a.usuario,
+                a.nombres,
+                a.apellidos,
+                a.id_sede,
+                a.ventanilla,
+                a.estado,
+                s.codigo AS codigo_sede,
+                s.nombre AS nombre_sede
+            FROM asesores AS a
+            INNER JOIN sedes AS s
+                ON s.id_sede = a.id_sede
+            WHERE a.id_asesor = $1
+            LIMIT 1
+            FOR UPDATE OF a
+            `,
+            [idAsesorNumero]
+        );
+
+        if (resultadoAsesor.rows.length === 0) {
+            await client.query("ROLLBACK");
+
+            return res.status(404).json({
+                ok: false,
+                mensaje:
+                    "El asesor solicitado no existe.",
+            });
+        }
+
+        const asesor = resultadoAsesor.rows[0];
+
+        if (!asesor.estado) {
+            await client.query("ROLLBACK");
+
+            return res.status(403).json({
+                ok: false,
+                mensaje:
+                    "La cuenta del asesor se encuentra inactiva.",
+            });
+        }
+
+        if (!asesor.id_sede) {
+            await client.query("ROLLBACK");
+
+            return res.status(400).json({
+                ok: false,
+                mensaje:
+                    "El asesor no tiene una sede asignada.",
+            });
+        }
+
+        /*
+        Comprobar si el asesor ya tiene un turno
+        llamado o en atención.
+
+        codigo_turno se obtiene desde la vista.
+        */
+        const resultadoTurnoActual = await client.query(
+            `
+            SELECT
+                t.id_turno,
+                vd.codigo_turno,
+                t.estado,
+                t.ventanilla_atencion
+            FROM turnos AS t
+            INNER JOIN vw_turnos_detalle AS vd
+                ON vd.id_turno = t.id_turno
+            WHERE t.id_asesor = $1
+              AND t.estado IN (
+                  'LLAMADO',
+                  'EN_ATENCION'
+              )
+            ORDER BY t.fecha_registro ASC
+            LIMIT 1
+            `,
+            [idAsesorNumero]
+        );
+
+        if (resultadoTurnoActual.rows.length > 0) {
+            const turnoActual =
+                resultadoTurnoActual.rows[0];
+
+            await client.query("ROLLBACK");
+
+            return res.status(409).json({
+                ok: false,
+                mensaje:
+                    `Ya tienes el turno ${turnoActual.codigo_turno} en estado ${turnoActual.estado}. Debes terminarlo antes de llamar al siguiente ciudadano.`,
+
+                turnoActual: {
+                    idTurno:
+                        turnoActual.id_turno,
+
+                    codigoTurno:
+                        turnoActual.codigo_turno,
+
+                    estado:
+                        turnoActual.estado,
+
+                    ventanilla:
+                        turnoActual
+                            .ventanilla_atencion,
+                },
+            });
+        }
+
+        /*
+        Buscar el turno más antiguo en espera
+        perteneciente a la sede del asesor.
+        */
+        const resultadoSiguienteTurno =
+            await client.query(
+                `
+                SELECT
+                    t.id_turno,
+                    t.id_usuario,
+                    t.numero_turno,
+                    t.fecha_registro,
+
+                    vd.codigo_turno,
+
+                    u.dni,
+
+                    CONCAT_WS(
+                        ' ',
+                        cr.nombres,
+                        cr.apellido_paterno,
+                        cr.apellido_materno
+                    ) AS nombre_completo,
+
+                    tr.id_tramite,
+                    tr.codigo AS codigo_tramite,
+                    tr.nombre AS nombre_tramite,
+
+                    c.id_cola,
+                    c.id_sede
+
+                FROM turnos AS t
+
+                INNER JOIN colas AS c
+                    ON c.id_cola = t.id_cola
+
+                INNER JOIN usuarios AS u
+                    ON u.id_usuario = t.id_usuario
+
+                INNER JOIN ciudadanos_reniec AS cr
+                    ON cr.dni = u.dni
+
+                INNER JOIN tramites AS tr
+                    ON tr.id_tramite = c.id_tramite
+
+                INNER JOIN vw_turnos_detalle AS vd
+                    ON vd.id_turno = t.id_turno
+
+                WHERE c.id_sede = $1
+                  AND c.fecha = CURRENT_DATE
+                  AND c.estado = 'ABIERTA'
+                  AND t.estado = 'EN_ESPERA'
+
+                ORDER BY
+                    t.fecha_registro ASC,
+                    t.numero_turno ASC
+
+                LIMIT 1
+
+                FOR UPDATE OF t SKIP LOCKED
+                `,
+                [asesor.id_sede]
+            );
+
+        if (
+            resultadoSiguienteTurno.rows.length === 0
+        ) {
+            await client.query("ROLLBACK");
+
+            return res.status(404).json({
+                ok: false,
+                mensaje:
+                    "Actualmente no existen ciudadanos esperando en la cola de esta sede.",
+            });
+        }
+
+        const siguienteTurno =
+            resultadoSiguienteTurno.rows[0];
+
+        /*
+        Actualizar el turno.
+
+        No usamos codigo_turno en RETURNING porque
+        esa columna no existe en la tabla turnos.
+        */
+        const resultadoActualizacion =
+            await client.query(
+                `
+                UPDATE turnos
+                SET
+                    estado = 'LLAMADO',
+                    id_asesor = $1,
+                    ventanilla_atencion = $2,
+                    fecha_llamado =
+                        CURRENT_TIMESTAMP,
+                    observacion =
+                        'Turno llamado por el asesor'
+                WHERE id_turno = $3
+                RETURNING
+                    id_turno,
+                    numero_turno,
+                    estado,
+                    id_asesor,
+                    ventanilla_atencion,
+                    fecha_registro,
+                    fecha_llamado
+                `,
+                [
+                    asesor.id_asesor,
+                    asesor.ventanilla,
+                    siguienteTurno.id_turno,
+                ]
+            );
+
+        const turnoActualizado =
+            resultadoActualizacion.rows[0];
+
+        await client.query("COMMIT");
+
+        return res.status(200).json({
+            ok: true,
+
+            mensaje:
+                `Turno ${siguienteTurno.codigo_turno} llamado correctamente.`,
+
+            turno: {
+                idTurno:
+                    turnoActualizado.id_turno,
+
+                codigoTurno:
+                    siguienteTurno.codigo_turno,
+
+                numeroTurno:
+                    turnoActualizado.numero_turno,
+
+                estado:
+                    turnoActualizado.estado,
+
+                ciudadano: {
+                    dni: siguienteTurno.dni,
+
+                    nombreCompleto:
+                        siguienteTurno.nombre_completo,
+                },
+
+                tramite: {
+                    idTramite:
+                        siguienteTurno.id_tramite,
+
+                    codigo:
+                        siguienteTurno.codigo_tramite,
+
+                    nombre:
+                        siguienteTurno.nombre_tramite,
+                },
+
+                sede: {
+                    idSede:
+                        asesor.id_sede,
+
+                    codigo:
+                        asesor.codigo_sede,
+
+                    nombre:
+                        asesor.nombre_sede,
+                },
+
+                asesor: {
+                    idAsesor:
+                        asesor.id_asesor,
+
+                    nombreCompleto:
+                        `${asesor.nombres} ${asesor.apellidos}`,
+
+                    ventanilla:
+                        turnoActualizado
+                            .ventanilla_atencion,
+                },
+
+                fechaRegistro:
+                    turnoActualizado.fecha_registro,
+
+                fechaLlamado:
+                    turnoActualizado.fecha_llamado,
+            },
+        });
+    } catch (error) {
+        await client.query("ROLLBACK");
+
+        console.error(
+            "Error al llamar el siguiente turno:",
+            error
+        );
+
+        return res.status(500).json({
+            ok: false,
+            mensaje:
+                "Ocurrió un error al llamar al siguiente turno.",
+
+            error:
+                process.env.NODE_ENV ===
+                "development"
+                    ? error.message
+                    : undefined,
+        });
+    } finally {
+        client.release();
+    }
+}

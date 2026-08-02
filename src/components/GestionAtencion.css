@@ -39,8 +39,7 @@
     background: #fff;
     display: flex;
     align-items: center;
-    box-shadow: 0 5px 18px
-        rgba(31, 79, 130, 0.09);
+    box-shadow: 0 5px 18px rgba(31, 79, 130, 0.09);
 }
 
 .gestion-avatar {
@@ -76,17 +75,14 @@
     min-height: 130px;
     padding: 25px 28px;
     border-radius: 20px;
-    background: linear-gradient(
-        110deg,
-        #54b7fe,
-        #1976d2
-    );
+    background: linear-gradient(110deg,
+            #54b7fe,
+            #1976d2);
     color: #fff;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    box-shadow: 0 12px 28px
-        rgba(25, 118, 210, 0.2);
+    box-shadow: 0 12px 28px rgba(25, 118, 210, 0.2);
 }
 
 .sede-banner span {
@@ -129,8 +125,7 @@
     background: #fff;
     display: flex;
     align-items: center;
-    box-shadow: 0 6px 20px
-        rgba(31, 79, 130, 0.08);
+    box-shadow: 0 6px 20px rgba(31, 79, 130, 0.08);
 }
 
 .queue-summary-icon {
@@ -168,8 +163,7 @@
     padding: 24px;
     border-radius: 19px;
     background: #fff;
-    box-shadow: 0 6px 20px
-        rgba(31, 79, 130, 0.08);
+    box-shadow: 0 6px 20px rgba(31, 79, 130, 0.08);
 }
 
 .queue-toolbar {
@@ -221,7 +215,7 @@
 .queue-table {
     width: 100%;
     border-collapse: collapse;
-    min-width: 950px;
+    min-width: 720px;
 }
 
 .queue-table th {
@@ -407,4 +401,42 @@
     .refresh-button {
         width: 100%;
     }
+
+    .queue-actions {
+        width: 100%;
+        flex-direction: column;
+    }
+
+    .queue-actions button {
+        width: 100%;
+    }
+}
+
+.queue-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.call-next-button {
+    padding: 12px 18px;
+    border: none;
+    border-radius: 11px;
+    background: #25a55f;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.25s;
+}
+
+.call-next-button:hover {
+    background: #1d8c4e;
+    transform: translateY(-2px);
+}
+
+.call-next-button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
 }

@@ -8,9 +8,11 @@ import logo from "../img/logor.png";
 
 import {
     obtenerColaPorSede,
+    llamarSiguienteTurno,
 } from "../services/turnoService";
 
 export default function GestionAtencion() {
+    const [llamando, setLlamando] = useState(false);
     const navigate = useNavigate();
 
     const [cola, setCola] = useState([]);
@@ -87,6 +89,53 @@ export default function GestionAtencion() {
     useEffect(() => {
         cargarCola();
     }, [cargarCola]);
+
+    const manejarLlamarSiguiente = async () => {
+        if (!asesor?.idAsesor) {
+            alert(
+                "No se encontró el identificador del asesor."
+            );
+            return;
+        }
+
+        if (resumen.enEspera === 0) {
+            alert(
+                "Actualmente no existen ciudadanos esperando."
+            );
+            return;
+        }
+
+        try {
+            setLlamando(true);
+
+            const resultado =
+                await llamarSiguienteTurno(
+                    asesor.idAsesor
+                );
+
+            alert(
+                `${resultado.mensaje}\n\n` +
+                `Ciudadano: ${resultado.turno.ciudadano.nombreCompleto}\n` +
+                `DNI: ${resultado.turno.ciudadano.dni}\n` +
+                `Ventanilla: ${resultado.turno.asesor.ventanilla}`
+            );
+
+            await cargarCola();
+        } catch (error) {
+            console.error(
+                "Error al llamar el turno:",
+                error
+            );
+
+            alert(
+                error instanceof Error
+                    ? error.message
+                    : "No se pudo llamar al siguiente turno."
+            );
+        } finally {
+            setLlamando(false);
+        }
+    };
 
     const cerrarSesion = () => {
         localStorage.removeItem("asesorSesion");
@@ -413,15 +462,33 @@ export default function GestionAtencion() {
                             </p>
                         </div>
 
-                        <button
-                            className="refresh-button"
-                            onClick={cargarCola}
-                            disabled={cargando}
-                        >
-                            {cargando
-                                ? "Actualizando..."
-                                : "Actualizar cola"}
-                        </button>
+                        <div className="queue-actions">
+
+                            <button
+                                className="refresh-button"
+                                onClick={cargarCola}
+                                disabled={cargando || llamando}
+                            >
+                                {cargando
+                                    ? "Actualizando..."
+                                    : "Actualizar cola"}
+                            </button>
+
+                            <button
+                                className="call-next-button"
+                                onClick={manejarLlamarSiguiente}
+                                disabled={
+                                    llamando ||
+                                    cargando ||
+                                    resumen.enEspera === 0
+                                }
+                            >
+                                {llamando
+                                    ? "Llamando..."
+                                    : "Llamar siguiente turno"}
+                            </button>
+
+                        </div>
 
                     </div>
 
@@ -472,14 +539,8 @@ export default function GestionAtencion() {
                                         <th>Turno</th>
                                         <th>Ciudadano</th>
                                         <th>Trámite</th>
-                                        <th>Registro</th>
+                                        <th>Hora de registro</th>
                                         <th>Estado</th>
-                                        <th>
-                                            Personas delante
-                                        </th>
-                                        <th>
-                                            Tiempo estimado
-                                        </th>
                                     </tr>
                                 </thead>
 
@@ -556,18 +617,7 @@ export default function GestionAtencion() {
                                                 </span>
                                             </td>
 
-                                            <td>
-                                                {
-                                                    turno.personasDelante
-                                                }
-                                            </td>
-
-                                            <td>
-                                                {
-                                                    turno.tiempoEstimadoMinutos
-                                                }{" "}
-                                                min
-                                            </td>
+                                           
 
                                         </tr>
 

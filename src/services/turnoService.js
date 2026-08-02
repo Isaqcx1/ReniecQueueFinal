@@ -16,3 +16,28 @@ export async function obtenerColaPorSede(idSede) {
 
     return datos;
 }
+export async function llamarSiguienteTurno(idAsesor) {
+    const respuesta = await fetch(
+        `${API_URL}/api/turnos/siguiente`,
+        {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                idAsesor,
+            }),
+        }
+    );
+
+    const datos = await respuesta.json();
+
+    if (!respuesta.ok) {
+        throw new Error(
+            datos.mensaje ||
+                "No se pudo llamar al siguiente turno."
+        );
+    }
+
+    return datos;
+}
