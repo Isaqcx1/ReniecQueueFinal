@@ -440,3 +440,62 @@
     cursor: not-allowed;
     transform: none;
 }
+
+.turn-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 245px;
+}
+
+.action-button {
+    padding: 8px 11px;
+    border: none;
+    border-radius: 8px;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: 0.2s;
+    white-space: nowrap;
+}
+
+.action-button:hover {
+    transform: translateY(-1px);
+}
+
+.action-button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.start-button {
+    background: #1976d2;
+}
+
+.start-button:hover {
+    background: #1565c0;
+}
+
+.absent-button {
+    background: #e67e22;
+}
+
+.absent-button:hover {
+    background: #c96b16;
+}
+
+.finish-button {
+    background: #25a55f;
+}
+
+.finish-button:hover {
+    background: #1d8c4e;
+}
+
+.action-waiting-text {
+    color: #8393a3;
+    font-size: 12px;
+    font-style: italic;
+}

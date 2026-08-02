@@ -820,3 +820,407 @@ export async function llamarSiguienteTurno(req, res) {
         client.release();
     }
 }
+export async function actualizarEstadoTurno(req, res) {
+    const client = await pool.connect();
+
+    try {
+        const idTurno = Number(req.params.idTurno);
+        const idAsesor = Number(req.body.idAsesor);
+        const nuevoEstado = String(
+            req.body.nuevoEstado || ""
+        )
+            .trim()
+            .toUpperCase();
+
+        if (
+            !Number.isInteger(idTurno) ||
+            idTurno <= 0
+        ) {
+            return res.status(400).json({
+                ok: false,
+                mensaje:
+                    "El identificador del turno no es válido.",
+            });
+        }
+
+        if (
+            !Number.isInteger(idAsesor) ||
+            idAsesor <= 0
+        ) {
+            return res.status(400).json({
+                ok: false,
+                mensaje:
+                    "El identificador del asesor no es válido.",
+            });
+        }
+
+        const estadosPermitidos = [
+            "EN_ATENCION",
+            "AUSENTE",
+            "FINALIZADO",
+        ];
+
+        if (
+            !estadosPermitidos.includes(
+                nuevoEstado
+            )
+        ) {
+            return res.status(400).json({
+                ok: false,
+                mensaje:
+                    "El nuevo estado solicitado no es válido.",
+            });
+        }
+
+        await client.query("BEGIN");
+
+        /*
+        Buscar y validar al asesor.
+        */
+        const resultadoAsesor =
+            await client.query(
+                `
+                SELECT
+                    a.id_asesor,
+                    a.nombres,
+                    a.apellidos,
+                    a.id_sede,
+                    a.ventanilla,
+                    a.estado,
+                    s.nombre AS nombre_sede
+                FROM asesores AS a
+                INNER JOIN sedes AS s
+                    ON s.id_sede = a.id_sede
+                WHERE a.id_asesor = $1
+                LIMIT 1
+                FOR UPDATE OF a
+                `,
+                [idAsesor]
+            );
+
+        if (
+            resultadoAsesor.rows.length === 0
+        ) {
+            await client.query("ROLLBACK");
+
+            return res.status(404).json({
+                ok: false,
+                mensaje:
+                    "El asesor solicitado no existe.",
+            });
+        }
+
+        const asesor =
+            resultadoAsesor.rows[0];
+
+        if (!asesor.estado) {
+            await client.query("ROLLBACK");
+
+            return res.status(403).json({
+                ok: false,
+                mensaje:
+                    "La cuenta del asesor se encuentra inactiva.",
+            });
+        }
+
+        /*
+        Buscar y bloquear el turno.
+        El código se obtiene desde la vista porque
+        codigo_turno no existe en la tabla turnos.
+        */
+        const resultadoTurno =
+            await client.query(
+                `
+                SELECT
+                    t.id_turno,
+                    t.id_asesor,
+                    t.id_usuario,
+                    t.id_cola,
+                    t.numero_turno,
+                    t.estado,
+                    t.ventanilla_atencion,
+                    t.fecha_registro,
+                    t.fecha_llamado,
+                    t.fecha_inicio_atencion,
+
+                    vd.codigo_turno,
+                    vd.dni,
+                    vd.nombre_completo,
+                    vd.nombre_tramite,
+
+                    c.id_sede
+
+                FROM turnos AS t
+
+                INNER JOIN colas AS c
+                    ON c.id_cola = t.id_cola
+
+                INNER JOIN vw_turnos_detalle AS vd
+                    ON vd.id_turno = t.id_turno
+
+                WHERE t.id_turno = $1
+                LIMIT 1
+                FOR UPDATE OF t
+                `,
+                [idTurno]
+            );
+
+        if (
+            resultadoTurno.rows.length === 0
+        ) {
+            await client.query("ROLLBACK");
+
+            return res.status(404).json({
+                ok: false,
+                mensaje:
+                    "El turno solicitado no existe.",
+            });
+        }
+
+        const turno =
+            resultadoTurno.rows[0];
+
+        /*
+        El turno debe pertenecer a la misma sede.
+        */
+        if (
+            Number(turno.id_sede) !==
+            Number(asesor.id_sede)
+        ) {
+            await client.query("ROLLBACK");
+
+            return res.status(403).json({
+                ok: false,
+                mensaje:
+                    "El turno pertenece a una sede diferente a la del asesor.",
+            });
+        }
+
+        /*
+        El turno debe estar asignado al asesor
+        que intenta actualizarlo.
+        */
+        if (
+            Number(turno.id_asesor) !==
+            idAsesor
+        ) {
+            await client.query("ROLLBACK");
+
+            return res.status(403).json({
+                ok: false,
+                mensaje:
+                    "El turno está asignado a otro asesor.",
+            });
+        }
+
+        /*
+        Definir las transiciones válidas.
+        */
+        const transicionesPermitidas = {
+            LLAMADO: [
+                "EN_ATENCION",
+                "AUSENTE",
+            ],
+            EN_ATENCION: [
+                "FINALIZADO",
+            ],
+        };
+
+        const siguientesEstados =
+            transicionesPermitidas[
+                turno.estado
+            ] || [];
+
+        if (
+            !siguientesEstados.includes(
+                nuevoEstado
+            )
+        ) {
+            await client.query("ROLLBACK");
+
+            return res.status(409).json({
+                ok: false,
+                mensaje:
+                    `No se puede cambiar el turno de ${turno.estado} a ${nuevoEstado}.`,
+            });
+        }
+
+        let consultaActualizacion = "";
+        let observacion = "";
+
+        if (
+            nuevoEstado === "EN_ATENCION"
+        ) {
+            consultaActualizacion = `
+                UPDATE turnos
+                SET
+                    estado = 'EN_ATENCION',
+                    fecha_inicio_atencion =
+                        CURRENT_TIMESTAMP,
+                    observacion =
+                        'Atención iniciada por el asesor'
+                WHERE id_turno = $1
+                RETURNING
+                    id_turno,
+                    numero_turno,
+                    estado,
+                    id_asesor,
+                    ventanilla_atencion,
+                    fecha_registro,
+                    fecha_llamado,
+                    fecha_inicio_atencion,
+                    fecha_finalizacion
+            `;
+
+            observacion =
+                "La atención del ciudadano fue iniciada.";
+        }
+
+        if (
+            nuevoEstado === "AUSENTE"
+        ) {
+            consultaActualizacion = `
+                UPDATE turnos
+                SET
+                    estado = 'AUSENTE',
+                    fecha_finalizacion =
+                        CURRENT_TIMESTAMP,
+                    observacion =
+                        'Ciudadano ausente al momento del llamado'
+                WHERE id_turno = $1
+                RETURNING
+                    id_turno,
+                    numero_turno,
+                    estado,
+                    id_asesor,
+                    ventanilla_atencion,
+                    fecha_registro,
+                    fecha_llamado,
+                    fecha_inicio_atencion,
+                    fecha_finalizacion
+            `;
+
+            observacion =
+                "El ciudadano fue marcado como ausente.";
+        }
+
+        if (
+            nuevoEstado === "FINALIZADO"
+        ) {
+            consultaActualizacion = `
+                UPDATE turnos
+                SET
+                    estado = 'FINALIZADO',
+                    fecha_finalizacion =
+                        CURRENT_TIMESTAMP,
+                    observacion =
+                        'Atención finalizada correctamente'
+                WHERE id_turno = $1
+                RETURNING
+                    id_turno,
+                    numero_turno,
+                    estado,
+                    id_asesor,
+                    ventanilla_atencion,
+                    fecha_registro,
+                    fecha_llamado,
+                    fecha_inicio_atencion,
+                    fecha_finalizacion
+            `;
+
+            observacion =
+                "La atención fue finalizada correctamente.";
+        }
+
+        const resultadoActualizacion =
+            await client.query(
+                consultaActualizacion,
+                [idTurno]
+            );
+
+        const turnoActualizado =
+            resultadoActualizacion.rows[0];
+
+        await client.query("COMMIT");
+
+        return res.status(200).json({
+            ok: true,
+            mensaje: observacion,
+
+            turno: {
+                idTurno:
+                    turnoActualizado.id_turno,
+
+                codigoTurno:
+                    turno.codigo_turno,
+
+                numeroTurno:
+                    turnoActualizado.numero_turno,
+
+                estadoAnterior:
+                    turno.estado,
+
+                estado:
+                    turnoActualizado.estado,
+
+                ciudadano: {
+                    dni: turno.dni,
+                    nombreCompleto:
+                        turno.nombre_completo,
+                },
+
+                tramite: {
+                    nombre:
+                        turno.nombre_tramite,
+                },
+
+                asesor: {
+                    idAsesor:
+                        asesor.id_asesor,
+
+                    nombreCompleto:
+                        `${asesor.nombres} ${asesor.apellidos}`,
+
+                    ventanilla:
+                        turnoActualizado
+                            .ventanilla_atencion,
+                },
+
+                fechaRegistro:
+                    turnoActualizado.fecha_registro,
+
+                fechaLlamado:
+                    turnoActualizado.fecha_llamado,
+
+                fechaInicioAtencion:
+                    turnoActualizado
+                        .fecha_inicio_atencion,
+
+                fechaFinalizacion:
+                    turnoActualizado
+                        .fecha_finalizacion,
+            },
+        });
+    } catch (error) {
+        await client.query("ROLLBACK");
+
+        console.error(
+            "Error al actualizar el turno:",
+            error
+        );
+
+        return res.status(500).json({
+            ok: false,
+            mensaje:
+                "Ocurrió un error al actualizar el estado del turno.",
+
+            error:
+                process.env.NODE_ENV ===
+                "development"
+                    ? error.message
+                    : undefined,
+        });
+    } finally {
+        client.release();
+    }
+}

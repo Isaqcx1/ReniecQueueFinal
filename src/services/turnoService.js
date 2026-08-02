@@ -41,3 +41,34 @@ export async function llamarSiguienteTurno(idAsesor) {
 
     return datos;
 }
+
+export async function actualizarEstadoTurno(
+    idTurno,
+    idAsesor,
+    nuevoEstado
+) {
+    const respuesta = await fetch(
+        `${API_URL}/api/turnos/${idTurno}/estado`,
+        {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                idAsesor,
+                nuevoEstado,
+            }),
+        }
+    );
+
+    const datos = await respuesta.json();
+
+    if (!respuesta.ok) {
+        throw new Error(
+            datos.mensaje ||
+                "No se pudo actualizar el estado del turno."
+        );
+    }
+
+    return datos;
+}

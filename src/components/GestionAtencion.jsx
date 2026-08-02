@@ -9,10 +9,13 @@ import logo from "../img/logor.png";
 import {
     obtenerColaPorSede,
     llamarSiguienteTurno,
+    actualizarEstadoTurno,
 } from "../services/turnoService";
 
 export default function GestionAtencion() {
     const [llamando, setLlamando] = useState(false);
+    const [turnoActualizando, setTurnoActualizando] =
+        useState(null);
     const navigate = useNavigate();
 
     const [cola, setCola] = useState([]);
@@ -134,6 +137,65 @@ export default function GestionAtencion() {
             );
         } finally {
             setLlamando(false);
+        }
+    };
+
+    const manejarCambioEstado = async (
+        turno,
+        nuevoEstado
+    ) => {
+        if (!asesor?.idAsesor) {
+            alert(
+                "No se encontró el identificador del asesor."
+            );
+            return;
+        }
+
+        const mensajesConfirmacion = {
+            EN_ATENCION:
+                `¿Deseas iniciar la atención del turno ${turno.codigoTurno}?`,
+
+            AUSENTE:
+                `¿Deseas marcar como ausente al turno ${turno.codigoTurno}?`,
+
+            FINALIZADO:
+                `¿Deseas finalizar la atención del turno ${turno.codigoTurno}?`,
+        };
+
+        const confirmado = window.confirm(
+            mensajesConfirmacion[nuevoEstado]
+        );
+
+        if (!confirmado) {
+            return;
+        }
+
+        try {
+            setTurnoActualizando(turno.idTurno);
+
+            const resultado =
+                await actualizarEstadoTurno(
+                    turno.idTurno,
+                    asesor.idAsesor,
+                    nuevoEstado
+                );
+
+            alert(resultado.mensaje);
+
+            await cargarCola();
+        } catch (error) {
+            console.error(
+                "Error al actualizar el turno:",
+                error
+            );
+
+            alert(
+                error instanceof Error
+                    ? error.message
+                    : "No se pudo actualizar el turno."
+            );
+        } finally {
+            setTurnoActualizando(null);
         }
     };
 
@@ -541,6 +603,7 @@ export default function GestionAtencion() {
                                         <th>Trámite</th>
                                         <th>Hora de registro</th>
                                         <th>Estado</th>
+                                        <th>Acciones</th>
                                     </tr>
                                 </thead>
 
@@ -617,9 +680,78 @@ export default function GestionAtencion() {
                                                 </span>
                                             </td>
 
-                                           
+
+                                            <td>
+                                                <div className="turn-actions">
+
+                                                    {turno.estado === "LLAMADO" && (
+                                                        <>
+                                                            <button
+                                                                className="action-button start-button"
+                                                                disabled={
+                                                                    turnoActualizando ===
+                                                                    turno.idTurno
+                                                                }
+                                                                onClick={() =>
+                                                                    manejarCambioEstado(
+                                                                        turno,
+                                                                        "EN_ATENCION"
+                                                                    )
+                                                                }
+                                                            >
+                                                                Iniciar atención
+                                                            </button>
+
+                                                            <button
+                                                                className="action-button absent-button"
+                                                                disabled={
+                                                                    turnoActualizando ===
+                                                                    turno.idTurno
+                                                                }
+                                                                onClick={() =>
+                                                                    manejarCambioEstado(
+                                                                        turno,
+                                                                        "AUSENTE"
+                                                                    )
+                                                                }
+                                                            >
+                                                                Marcar ausente
+                                                            </button>
+                                                        </>
+                                                    )}
+
+                                                    {turno.estado === "EN_ATENCION" && (
+                                                        <button
+                                                            className="action-button finish-button"
+                                                            disabled={
+                                                                turnoActualizando ===
+                                                                turno.idTurno
+                                                            }
+                                                            onClick={() =>
+                                                                manejarCambioEstado(
+                                                                    turno,
+                                                                    "FINALIZADO"
+                                                                )
+                                                            }
+                                                        >
+                                                            Finalizar atención
+                                                        </button>
+                                                    )}
+
+                                                    {turno.estado === "EN_ESPERA" && (
+                                                        <span className="action-waiting-text">
+                                                            Pendiente de llamado
+                                                        </span>
+                                                    )}
+
+                                                </div>
+                                            </td>
+
+
 
                                         </tr>
+
+
 
                                     ))}
 

@@ -4,12 +4,13 @@ import {
     asignarTurno,
     obtenerColaPorSede,
     llamarSiguienteTurno,
+    actualizarEstadoTurno,
 } from "../controllers/turnoController.js";
 
 const router = Router();
 
 /*
-Registrar un turno desde la aplicación móvil.
+Asignar turno desde la aplicación móvil.
 REN-11
 */
 router.post(
@@ -18,7 +19,7 @@ router.post(
 );
 
 /*
-Llamar al siguiente turno desde la web.
+Llamar al siguiente turno.
 REN-16
 */
 router.post(
@@ -27,7 +28,16 @@ router.post(
 );
 
 /*
-Consultar la cola activa de una sede.
+Actualizar el estado del turno.
+REN-18
+*/
+router.patch(
+    "/:idTurno/estado",
+    actualizarEstadoTurno
+);
+
+/*
+Consultar la cola por sede.
 REN-12
 */
 router.get(
