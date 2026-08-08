@@ -1224,3 +1224,507 @@ export async function actualizarEstadoTurno(req, res) {
         client.release();
     }
 }
+export async function obtenerTurnoActivo(req, res) {
+    try {
+        const dni = String(
+            req.params.dni || ""
+        ).trim();
+
+        if (!/^\d{8}$/.test(dni)) {
+            return res.status(400).json({
+                ok: false,
+                mensaje:
+                    "El DNI debe contener exactamente 8 dígitos.",
+            });
+        }
+
+        /*
+        Buscar el último turno del ciudadano
+        correspondiente al día actual.
+
+        personas_delante se calcula nuevamente
+        en cada consulta para mantener el dato
+        actualizado.
+        */
+        const resultado = await pool.query(
+            `
+            SELECT
+                t.id_turno,
+                t.id_cola,
+                t.numero_turno,
+                t.estado,
+                t.ventanilla_atencion,
+                t.fecha_registro,
+                t.fecha_llamado,
+                t.fecha_inicio_atencion,
+                t.fecha_finalizacion,
+
+                vd.codigo_turno,
+
+                vd.id_sede,
+                vd.codigo_sede,
+                vd.nombre_sede,
+
+                vd.id_tramite,
+                vd.codigo_tramite,
+                vd.nombre_tramite,
+
+                vd.id_asesor,
+                vd.nombre_asesor,
+
+                (
+                    SELECT COUNT(*)::INTEGER
+                    FROM turnos AS anterior
+                    WHERE anterior.id_cola =
+                        t.id_cola
+                      AND anterior.numero_turno <
+                        t.numero_turno
+                      AND anterior.estado IN (
+                          'EN_ESPERA',
+                          'LLAMADO',
+                          'EN_ATENCION'
+                      )
+                ) AS personas_delante
+
+            FROM turnos AS t
+
+            INNER JOIN usuarios AS u
+                ON u.id_usuario = t.id_usuario
+
+            INNER JOIN colas AS c
+                ON c.id_cola = t.id_cola
+
+            INNER JOIN vw_turnos_detalle AS vd
+                ON vd.id_turno = t.id_turno
+
+            WHERE u.dni = $1
+              AND c.fecha = CURRENT_DATE
+
+            ORDER BY t.id_turno DESC
+            LIMIT 1
+            `,
+            [dni]
+        );
+
+        if (resultado.rows.length === 0) {
+            return res.status(200).json({
+                ok: true,
+                tieneTurno: false,
+                tieneTurnoActivo: false,
+                mensaje:
+                    "El ciudadano no tiene un turno registrado para hoy.",
+                turno: null,
+            });
+        }
+
+        const registro = resultado.rows[0];
+
+        const estadosActivos = [
+            "EN_ESPERA",
+            "LLAMADO",
+            "EN_ATENCION",
+        ];
+
+        const tieneTurnoActivo =
+            estadosActivos.includes(
+                registro.estado
+            );
+
+        /*
+        Las personas delante solo se muestran
+        mientras el ciudadano está esperando.
+        */
+        const personasDelante =
+            registro.estado === "EN_ESPERA"
+                ? Number(
+                      registro.personas_delante
+                  )
+                : 0;
+
+        /*
+        Para el prototipo se considera un tiempo
+        promedio de 5 minutos por persona.
+        */
+        const minutosPorPersona = 5;
+
+        const tiempoEstimadoMinutos =
+            registro.estado === "EN_ESPERA"
+                ? personasDelante *
+                  minutosPorPersona
+                : 0;
+
+        /*
+        Generar el aviso que utilizará la
+        aplicación móvil.
+        */
+        let aviso = null;
+
+        if (registro.estado === "EN_ESPERA") {
+            if (personasDelante === 0) {
+                aviso = {
+                    tipo: "SIGUIENTE",
+                    titulo:
+                        "Eres el siguiente",
+                    mensaje:
+                        "Mantente atento, tu turno será llamado próximamente.",
+                };
+            } else if (personasDelante === 1) {
+                aviso = {
+                    tipo: "PROXIMO",
+                    titulo:
+                        "Tu turno está muy cerca",
+                    mensaje:
+                        "Hay una persona delante de ti. Prepárate para ser llamado.",
+                };
+            } else if (personasDelante === 2) {
+                aviso = {
+                    tipo: "PROXIMO",
+                    titulo:
+                        "Tu turno está próximo",
+                    mensaje:
+                        "Hay dos personas delante de ti. Mantente cerca de la sede.",
+                };
+            }
+        }
+
+        if (registro.estado === "LLAMADO") {
+            aviso = {
+                tipo: "LLAMADO",
+                titulo: "¡Es tu turno!",
+                mensaje:
+                    `Dirígete a la ventanilla ${
+                        registro.ventanilla_atencion ||
+                        "asignada"
+                    }.`,
+            };
+        }
+
+        if (
+            registro.estado ===
+            "EN_ATENCION"
+        ) {
+            aviso = {
+                tipo: "EN_ATENCION",
+                titulo:
+                    "Atención en proceso",
+                mensaje:
+                    `Tu trámite está siendo atendido en la ventanilla ${
+                        registro.ventanilla_atencion ||
+                        ""
+                    }.`,
+            };
+        }
+
+        if (
+            registro.estado === "FINALIZADO"
+        ) {
+            aviso = {
+                tipo: "FINALIZADO",
+                titulo:
+                    "Atención finalizada",
+                mensaje:
+                    "Tu atención fue finalizada correctamente.",
+            };
+        }
+
+        if (registro.estado === "AUSENTE") {
+            aviso = {
+                tipo: "AUSENTE",
+                titulo:
+                    "Turno marcado como ausente",
+                mensaje:
+                    "No te presentaste cuando tu turno fue llamado.",
+            };
+        }
+
+        return res.status(200).json({
+            ok: true,
+            tieneTurno: true,
+            tieneTurnoActivo,
+
+            turno: {
+                idTurno:
+                    registro.id_turno,
+
+                codigoTurno:
+                    registro.codigo_turno,
+
+                numeroTurno:
+                    registro.numero_turno,
+
+                estado:
+                    registro.estado,
+
+                personasDelante,
+
+                tiempoEstimadoMinutos,
+
+                ventanilla:
+                    registro
+                        .ventanilla_atencion,
+
+                sede: {
+                    idSede:
+                        registro.id_sede,
+
+                    codigo:
+                        registro.codigo_sede,
+
+                    nombre:
+                        registro.nombre_sede,
+                },
+
+                tramite: {
+                    idTramite:
+                        registro.id_tramite,
+
+                    codigo:
+                        registro.codigo_tramite,
+
+                    nombre:
+                        registro.nombre_tramite,
+                },
+
+                asesor: registro.id_asesor
+                    ? {
+                          idAsesor:
+                              registro.id_asesor,
+
+                          nombreCompleto:
+                              registro.nombre_asesor,
+                      }
+                    : null,
+
+                fechaRegistro:
+                    registro.fecha_registro,
+
+                fechaLlamado:
+                    registro.fecha_llamado,
+
+                fechaInicioAtencion:
+                    registro
+                        .fecha_inicio_atencion,
+
+                fechaFinalizacion:
+                    registro
+                        .fecha_finalizacion,
+
+                aviso,
+            },
+        });
+    } catch (error) {
+        console.error(
+            "Error al consultar el turno activo:",
+            error
+        );
+
+        return res.status(500).json({
+            ok: false,
+            mensaje:
+                "Ocurrió un error al consultar el seguimiento del turno.",
+
+            error:
+                process.env.NODE_ENV ===
+                "development"
+                    ? error.message
+                    : undefined,
+        });
+    }
+}
+
+export async function cancelarTurno(req, res) {
+    const client = await pool.connect();
+
+    try {
+        const idTurno = Number(req.params.idTurno);
+
+        const dni = String(
+            req.body.dni || ""
+        ).trim();
+
+        if (
+            !Number.isInteger(idTurno) ||
+            idTurno <= 0
+        ) {
+            return res.status(400).json({
+                ok: false,
+                mensaje:
+                    "El identificador del turno no es válido.",
+            });
+        }
+
+        if (!/^\d{8}$/.test(dni)) {
+            return res.status(400).json({
+                ok: false,
+                mensaje:
+                    "El DNI debe contener exactamente 8 dígitos.",
+            });
+        }
+
+        await client.query("BEGIN");
+
+        /*
+        Buscar el turno y comprobar que realmente
+        pertenece al ciudadano que está solicitando
+        la cancelación.
+        */
+        const resultadoTurno =
+            await client.query(
+                `
+                SELECT
+                    t.id_turno,
+                    t.id_usuario,
+                    t.id_cola,
+                    t.numero_turno,
+                    t.estado,
+                    t.fecha_registro,
+
+                    u.dni,
+
+                    vd.codigo_turno,
+                    vd.nombre_sede,
+                    vd.nombre_tramite
+
+                FROM turnos AS t
+
+                INNER JOIN usuarios AS u
+                    ON u.id_usuario = t.id_usuario
+
+                INNER JOIN vw_turnos_detalle AS vd
+                    ON vd.id_turno = t.id_turno
+
+                WHERE t.id_turno = $1
+                LIMIT 1
+
+                FOR UPDATE OF t
+                `,
+                [idTurno]
+            );
+
+        if (
+            resultadoTurno.rows.length === 0
+        ) {
+            await client.query("ROLLBACK");
+
+            return res.status(404).json({
+                ok: false,
+                mensaje:
+                    "El turno solicitado no existe.",
+            });
+        }
+
+        const turno =
+            resultadoTurno.rows[0];
+
+        /*
+        Validar que el turno pertenezca
+        al ciudadano autenticado.
+        */
+        if (turno.dni !== dni) {
+            await client.query("ROLLBACK");
+
+            return res.status(403).json({
+                ok: false,
+                mensaje:
+                    "El turno no pertenece al ciudadano indicado.",
+            });
+        }
+
+        /*
+        Solo se puede cancelar mientras
+        el ciudadano continúa esperando.
+        */
+        if (turno.estado !== "EN_ESPERA") {
+            await client.query("ROLLBACK");
+
+            return res.status(409).json({
+                ok: false,
+                mensaje:
+                    `No puedes cancelar un turno que se encuentra en estado ${turno.estado}.`,
+            });
+        }
+
+        /*
+        Cambiar el estado del turno.
+        No eliminamos el registro porque debe
+        permanecer en el historial del ciudadano.
+        */
+        const resultadoActualizacion =
+            await client.query(
+                `
+                UPDATE turnos
+                SET
+                    estado = 'CANCELADO',
+                    fecha_finalizacion =
+                        CURRENT_TIMESTAMP,
+                    observacion =
+                        'Turno cancelado por el ciudadano'
+                WHERE id_turno = $1
+
+                RETURNING
+                    id_turno,
+                    numero_turno,
+                    estado,
+                    fecha_registro,
+                    fecha_finalizacion
+                `,
+                [idTurno]
+            );
+
+        const turnoCancelado =
+            resultadoActualizacion.rows[0];
+
+        await client.query("COMMIT");
+
+        return res.status(200).json({
+            ok: true,
+
+            mensaje:
+                `El turno ${turno.codigo_turno} fue cancelado correctamente.`,
+
+            turno: {
+                idTurno:
+                    turnoCancelado.id_turno,
+
+                codigoTurno:
+                    turno.codigo_turno,
+
+                estado:
+                    turnoCancelado.estado,
+
+                sede:
+                    turno.nombre_sede,
+
+                tramite:
+                    turno.nombre_tramite,
+
+                fechaRegistro:
+                    turnoCancelado.fecha_registro,
+
+                fechaCancelacion:
+                    turnoCancelado.fecha_finalizacion,
+            },
+        });
+    } catch (error) {
+        await client.query("ROLLBACK");
+
+        console.error(
+            "Error al cancelar el turno:",
+            error
+        );
+
+        return res.status(500).json({
+            ok: false,
+            mensaje:
+                "Ocurrió un error al cancelar el turno.",
+
+            error:
+                process.env.NODE_ENV ===
+                "development"
+                    ? error.message
+                    : undefined,
+        });
+    } finally {
+        client.release();
+    }
+}

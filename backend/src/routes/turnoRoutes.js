@@ -5,6 +5,8 @@ import {
     obtenerColaPorSede,
     llamarSiguienteTurno,
     actualizarEstadoTurno,
+    obtenerTurnoActivo,
+    cancelarTurno,
 } from "../controllers/turnoController.js";
 
 const router = Router();
@@ -28,12 +30,30 @@ router.post(
 );
 
 /*
+Cancelar turno desde la aplicación móvil.
+REN-15
+*/
+router.patch(
+    "/:idTurno/cancelar",
+    cancelarTurno
+);
+
+/*
 Actualizar el estado del turno.
 REN-18
 */
 router.patch(
     "/:idTurno/estado",
     actualizarEstadoTurno
+);
+
+/*
+Seguimiento desde la aplicación móvil.
+REN-13
+*/
+router.get(
+    "/activo/:dni",
+    obtenerTurnoActivo
 );
 
 /*
@@ -44,5 +64,7 @@ router.get(
     "/sede/:idSede",
     obtenerColaPorSede
 );
+
+
 
 export default router;
