@@ -1,9 +1,9 @@
 import { useNavigate } from "react-router-dom";
 
-import "../components/Dashboard.css";
+import "../components/MiPerfil.css";
 import logo from "../img/logor.png";
 
-export default function Dashboard() {
+export default function MiPerfil() {
     const navigate = useNavigate();
 
     const sesionGuardada = localStorage.getItem(
@@ -56,18 +56,31 @@ export default function Dashboard() {
                 <div className="sidebar-divider" />
 
                 <nav className="sidebar-menu">
-                    <button className="menu-option active">
+
+                    <button
+                        className="menu-option"
+                        onClick={() =>
+                            mostrarProximamente(
+                                "Dashboard"
+                            )
+                        }
+                    >
                         <span className="menu-icon">
                             ⌂
                         </span>
 
                         <span>Dashboard</span>
+
+                        <small>Próximamente</small>
                     </button>
+
 
                     <button
                         className="menu-option"
                         onClick={() =>
-                            navigate("/gestion-atencion")
+                            navigate(
+                                "/gestion-atencion"
+                            )
                         }
                     >
                         <span className="menu-icon">
@@ -79,22 +92,6 @@ export default function Dashboard() {
                         </span>
                     </button>
 
-                    <button
-                        className="menu-option"
-                        onClick={() =>
-                            mostrarProximamente(
-                                "Usuarios"
-                            )
-                        }
-                    >
-                        <span className="menu-icon">
-                            ♙
-                        </span>
-
-                        <span>Usuarios</span>
-
-                        <small>Próximamente</small>
-                    </button>
 
                     <button
                         className="menu-option"
@@ -113,22 +110,17 @@ export default function Dashboard() {
                         <small>Próximamente</small>
                     </button>
 
+
                     <button
-                        className="menu-option"
-                        onClick={() =>
-                            mostrarProximamente(
-                                "Mi perfil"
-                            )
-                        }
+                        className="menu-option active"
                     >
                         <span className="menu-icon">
                             ●
                         </span>
 
                         <span>Mi perfil</span>
-
-                        <small>Próximamente</small>
                     </button>
+
                 </nav>
 
                 <div className="advisor-sidebar">
@@ -165,14 +157,11 @@ export default function Dashboard() {
                         </p>
 
                         <h1>
-                            Bienvenido,{" "}
-                            {asesor.nombres}
+                            Mi perfil
                         </h1>
 
                         <p className="dashboard-description">
-                            Su sesión fue validada
-                            correctamente mediante el backend
-                            y la base de datos PostgreSQL.
+                            Consulta la información asociada a tu cuenta de asesor.
                         </p>
                     </div>
 
@@ -197,18 +186,17 @@ export default function Dashboard() {
 
                 <section className="welcome-banner">
                     <div className="banner-information">
-                        <span className="banner-label">
-                            Sesión iniciada correctamente
-                        </span>
+                        <p className="banner-label">
+                            Información de la cuenta
+                        </p>
 
                         <h2>
-                            Panel del asesor
+                            {asesor.nombreCompleto}
                         </h2>
 
                         <p>
-                            La cuenta se encuentra activa y
-                            asignada a una sede y ventanilla
-                            de atención.
+                            Cuenta institucional asignada para la atención
+                            de ciudadanos en la sede correspondiente.
                         </p>
                     </div>
 

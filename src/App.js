@@ -8,18 +8,18 @@ import {
 } from "react-router-dom";
 
 import Login from "./components/Login.jsx";
-import Dashboard from "./components/Dashboard.jsx";
-import ProtectedRoute from "./components/ProtectedRoute.jsx";
+import MiPerfil from "./components/MiPerfil.jsx";
 import GestionAtencion from "./components/GestionAtencion.jsx";
+import ProtectedRoute from "./components/ProtectedRoute.jsx";
+
 function LoginRoute() {
-    const sesion = localStorage.getItem(
-        "asesorSesion"
-    );
+    const sesion =
+        localStorage.getItem("asesorSesion");
 
     if (sesion) {
         return (
             <Navigate
-                to="/panel"
+                to="/perfil"
                 replace
             />
         );
@@ -33,23 +33,44 @@ export default function App() {
         <BrowserRouter>
             <Routes>
 
-                {/* Ruta pública */}
                 <Route
                     path="/"
                     element={<LoginRoute />}
                 />
 
-                {/* Rutas protegidas */}
-                <Route element={<ProtectedRoute />}>
+                <Route
+                    element={<ProtectedRoute />}
+                >
+
+                    <Route
+                        path="/perfil"
+                        element={<MiPerfil />}
+                    />
+
+                    <Route
+                        path="/gestion-atencion"
+                        element={
+                            <GestionAtencion />
+                        }
+                    />
+
+                    {/*
+                    Dashboard real:
+                    se desarrollará en REN-19.
+                    */}
 
                     <Route
                         path="/panel"
-                        element={<Dashboard />}
+                        element={
+                            <Navigate
+                                to="/perfil"
+                                replace
+                            />
+                        }
                     />
 
                 </Route>
 
-                {/* Ruta inexistente */}
                 <Route
                     path="*"
                     element={
@@ -58,10 +79,6 @@ export default function App() {
                             replace
                         />
                     }
-                />
-                <Route
-                    path="/gestion-atencion"
-                    element={<GestionAtencion />}
                 />
 
             </Routes>

@@ -1728,3 +1728,151 @@ export async function cancelarTurno(req, res) {
         client.release();
     }
 }
+export async function obtenerHistorialTurnos(req, res) {
+    try {
+        const dni = String(
+            req.params.dni || ""
+        ).trim();
+
+        if (!/^\d{8}$/.test(dni)) {
+            return res.status(400).json({
+                ok: false,
+                mensaje:
+                    "El DNI debe contener exactamente 8 dígitos.",
+            });
+        }
+
+        const resultado = await pool.query(
+            `
+            SELECT
+                id_turno,
+                codigo_turno,
+                numero_turno,
+
+                dni,
+                nombre_completo,
+
+                id_sede,
+                codigo_sede,
+                nombre_sede,
+
+                id_tramite,
+                codigo_tramite,
+                nombre_tramite,
+
+                estado,
+
+                nombre_asesor,
+                ventanilla_atencion,
+
+                fecha_registro,
+                fecha_llamado,
+                fecha_inicio_atencion,
+                fecha_finalizacion
+
+            FROM vw_turnos_detalle
+
+            WHERE dni = $1
+
+              AND estado IN (
+                  'FINALIZADO',
+                  'AUSENTE',
+                  'CANCELADO'
+              )
+
+            ORDER BY fecha_registro DESC
+            `,
+            [dni]
+        );
+
+        const historial = resultado.rows.map(
+            (turno) => ({
+                idTurno:
+                    turno.id_turno,
+
+                codigoTurno:
+                    turno.codigo_turno,
+
+                numeroTurno:
+                    turno.numero_turno,
+
+                estado:
+                    turno.estado,
+
+                sede: {
+                    idSede:
+                        turno.id_sede,
+
+                    codigo:
+                        turno.codigo_sede,
+
+                    nombre:
+                        turno.nombre_sede,
+                },
+
+                tramite: {
+                    idTramite:
+                        turno.id_tramite,
+
+                    codigo:
+                        turno.codigo_tramite,
+
+                    nombre:
+                        turno.nombre_tramite,
+                },
+
+                asesor: turno.nombre_asesor
+                    ? {
+                          nombreCompleto:
+                              turno.nombre_asesor,
+
+                          ventanilla:
+                              turno.ventanilla_atencion,
+                      }
+                    : null,
+
+                fechaRegistro:
+                    turno.fecha_registro,
+
+                fechaLlamado:
+                    turno.fecha_llamado,
+
+                fechaInicioAtencion:
+                    turno.fecha_inicio_atencion,
+
+                fechaFinalizacion:
+                    turno.fecha_finalizacion,
+            })
+        );
+
+        return res.status(200).json({
+            ok: true,
+
+            ciudadano: {
+                dni,
+
+                nombreCompleto:
+                    resultado.rows.length > 0
+                        ? resultado.rows[0]
+                              .nombre_completo
+                        : null,
+            },
+
+            total:
+                historial.length,
+
+            historial,
+        });
+    } catch (error) {
+        console.error(
+            "Error al obtener historial de turnos:",
+            error
+        );
+
+        return res.status(500).json({
+            ok: false,
+            mensaje:
+                "No se pudo obtener el historial de turnos.",
+        });
+    }
+}

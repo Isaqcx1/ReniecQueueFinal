@@ -7,6 +7,7 @@ import {
     actualizarEstadoTurno,
     obtenerTurnoActivo,
     cancelarTurno,
+    obtenerHistorialTurnos,
 } from "../controllers/turnoController.js";
 
 const router = Router();
@@ -54,6 +55,14 @@ REN-13
 router.get(
     "/activo/:dni",
     obtenerTurnoActivo
+);
+/*
+Historial de turnos del ciudadano.
+REN-17
+*/
+router.get(
+    "/historial/:dni",
+    obtenerHistorialTurnos
 );
 
 /*

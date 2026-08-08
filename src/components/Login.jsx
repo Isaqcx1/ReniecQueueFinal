@@ -66,7 +66,7 @@ export default function Login() {
                 JSON.stringify(datos.asesor)
             );
 
-            navigate("/panel", {
+            navigate("/perfil", {
                 replace: true,
             });
 

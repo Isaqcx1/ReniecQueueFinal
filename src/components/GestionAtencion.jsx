@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
-import "./Dashboard.css";
+
 import "./GestionAtencion.css";
 
 import logo from "../img/logor.png";
@@ -267,14 +267,12 @@ export default function GestionAtencion() {
                     />
                 </div>
 
-                <div className="sidebar-divider" />
-
                 <nav className="sidebar-menu">
 
                     <button
                         className="menu-option"
                         onClick={() =>
-                            navigate("/panel")
+                            mostrarProximamente("Dashboard")
                         }
                     >
                         <span className="menu-icon">
@@ -282,7 +280,10 @@ export default function GestionAtencion() {
                         </span>
 
                         <span>Dashboard</span>
+
+                        <small>Próximamente</small>
                     </button>
+
 
                     <button
                         className="menu-option active"
@@ -296,29 +297,11 @@ export default function GestionAtencion() {
                         </span>
                     </button>
 
-                    <button
-                        className="menu-option"
-                        onClick={() =>
-                            mostrarProximamente(
-                                "Usuarios"
-                            )
-                        }
-                    >
-                        <span className="menu-icon">
-                            ♙
-                        </span>
-
-                        <span>Usuarios</span>
-
-                        <small>Próximamente</small>
-                    </button>
 
                     <button
                         className="menu-option"
                         onClick={() =>
-                            mostrarProximamente(
-                                "Reportes"
-                            )
+                            mostrarProximamente("Reportes")
                         }
                     >
                         <span className="menu-icon">
@@ -330,12 +313,11 @@ export default function GestionAtencion() {
                         <small>Próximamente</small>
                     </button>
 
+
                     <button
                         className="menu-option"
                         onClick={() =>
-                            mostrarProximamente(
-                                "Mi perfil"
-                            )
+                            navigate("/perfil")
                         }
                     >
                         <span className="menu-icon">
@@ -343,8 +325,6 @@ export default function GestionAtencion() {
                         </span>
 
                         <span>Mi perfil</span>
-
-                        <small>Próximamente</small>
                     </button>
 
                 </nav>
