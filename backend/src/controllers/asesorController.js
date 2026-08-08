@@ -331,3 +331,574 @@ export async function obtenerDashboardAsesor(req, res) {
         });
     }
 }
+
+export async function obtenerReporteAsesor(
+    req,
+    res
+) {
+    try {
+        const idSede =
+            Number(
+                req.params.idSede
+            );
+
+        const {
+            desde,
+            hasta,
+            estado = "TODOS",
+            agrupacion = "DIA",
+        } = req.query;
+
+        if (
+            !Number.isInteger(
+                idSede
+            ) ||
+            idSede <= 0
+        ) {
+            return res
+                .status(400)
+                .json({
+                    ok: false,
+                    mensaje:
+                        "La sede indicada no es válida.",
+                });
+        }
+
+        if (
+            !desde ||
+            !hasta
+        ) {
+            return res
+                .status(400)
+                .json({
+                    ok: false,
+                    mensaje:
+                        "Debe indicar la fecha inicial y final.",
+                });
+        }
+
+        const estadosPermitidos = [
+            "TODOS",
+            "EN_ESPERA",
+            "LLAMADO",
+            "EN_ATENCION",
+            "FINALIZADO",
+            "AUSENTE",
+            "CANCELADO",
+        ];
+
+        const estadoSeleccionado =
+            String(
+                estado
+            ).toUpperCase();
+
+        if (
+            !estadosPermitidos.includes(
+                estadoSeleccionado
+            )
+        ) {
+            return res
+                .status(400)
+                .json({
+                    ok: false,
+                    mensaje:
+                        "El estado indicado no es válido.",
+                });
+        }
+
+        const agrupacionesPermitidas = [
+            "HORA",
+            "DIA",
+            "MES",
+        ];
+
+        const agrupacionSeleccionada =
+            String(
+                agrupacion
+            ).toUpperCase();
+
+        if (
+            !agrupacionesPermitidas.includes(
+                agrupacionSeleccionada
+            )
+        ) {
+            return res
+                .status(400)
+                .json({
+                    ok: false,
+                    mensaje:
+                        "La agrupación indicada no es válida.",
+                });
+        }
+
+        const fechaDesde =
+            new Date(
+                `${desde}T00:00:00`
+            );
+
+        const fechaHasta =
+            new Date(
+                `${hasta}T00:00:00`
+            );
+
+        if (
+            Number.isNaN(
+                fechaDesde.getTime()
+            ) ||
+            Number.isNaN(
+                fechaHasta.getTime()
+            )
+        ) {
+            return res
+                .status(400)
+                .json({
+                    ok: false,
+                    mensaje:
+                        "El formato de las fechas no es válido.",
+                });
+        }
+
+        if (
+            fechaDesde >
+            fechaHasta
+        ) {
+            return res
+                .status(400)
+                .json({
+                    ok: false,
+                    mensaje:
+                        "La fecha inicial no puede ser mayor que la fecha final.",
+                });
+        }
+
+        const sedeResultado =
+            await pool.query(
+                `
+                SELECT
+                    id_sede,
+                    codigo,
+                    nombre
+                FROM sedes
+                WHERE id_sede = $1
+                LIMIT 1
+                `,
+                [idSede]
+            );
+
+        if (
+            sedeResultado.rows
+                .length === 0
+        ) {
+            return res
+                .status(404)
+                .json({
+                    ok: false,
+                    mensaje:
+                        "La sede indicada no existe.",
+                });
+        }
+
+        const parametros = [
+            idSede,
+            desde,
+            hasta,
+        ];
+
+        let filtroEstado = "";
+
+        if (
+            estadoSeleccionado !==
+            "TODOS"
+        ) {
+            parametros.push(
+                estadoSeleccionado
+            );
+
+            filtroEstado = `
+                AND estado = $4
+            `;
+        }
+
+        const resumenResultado =
+            await pool.query(
+                `
+                SELECT
+                    COUNT(*)::int
+                        AS total,
+
+                    COUNT(*) FILTER (
+                        WHERE estado = 'FINALIZADO'
+                    )::int
+                        AS finalizados,
+
+                    COUNT(*) FILTER (
+                        WHERE estado = 'AUSENTE'
+                    )::int
+                        AS ausentes,
+
+                    COUNT(*) FILTER (
+                        WHERE estado = 'CANCELADO'
+                    )::int
+                        AS cancelados,
+
+                    COUNT(*) FILTER (
+                        WHERE estado = 'EN_ESPERA'
+                    )::int
+                        AS en_espera,
+
+                    COUNT(*) FILTER (
+                        WHERE estado = 'LLAMADO'
+                    )::int
+                        AS llamados,
+
+                    COUNT(*) FILTER (
+                        WHERE estado = 'EN_ATENCION'
+                    )::int
+                        AS en_atencion
+
+                FROM vw_turnos_detalle
+
+                WHERE id_sede = $1
+
+                  AND fecha_registro::date
+                      BETWEEN
+                      $2::date
+                      AND
+                      $3::date
+
+                  ${filtroEstado}
+                `,
+                parametros
+            );
+
+        const distribucionResultado =
+            await pool.query(
+                `
+                SELECT
+                    estado,
+                    COUNT(*)::int
+                        AS cantidad
+
+                FROM vw_turnos_detalle
+
+                WHERE id_sede = $1
+
+                  AND fecha_registro::date
+                      BETWEEN
+                      $2::date
+                      AND
+                      $3::date
+
+                  ${filtroEstado}
+
+                GROUP BY estado
+
+                ORDER BY cantidad DESC
+                `,
+                parametros
+            );
+
+        const tramitesResultado =
+            await pool.query(
+                `
+                SELECT
+                    nombre_tramite,
+                    COUNT(*)::int
+                        AS cantidad
+
+                FROM vw_turnos_detalle
+
+                WHERE id_sede = $1
+
+                  AND fecha_registro::date
+                      BETWEEN
+                      $2::date
+                      AND
+                      $3::date
+
+                  ${filtroEstado}
+
+                GROUP BY
+                    nombre_tramite
+
+                ORDER BY
+                    cantidad DESC,
+                    nombre_tramite ASC
+                `,
+                parametros
+            );
+
+        let expresionAgrupacion;
+
+        if (
+            agrupacionSeleccionada ===
+            "HORA"
+        ) {
+            expresionAgrupacion = `
+                DATE_TRUNC(
+                    'hour',
+                    fecha_registro
+                )
+            `;
+        } else if (
+            agrupacionSeleccionada ===
+            "MES"
+        ) {
+            expresionAgrupacion = `
+                DATE_TRUNC(
+                    'month',
+                    fecha_registro
+                )
+            `;
+        } else {
+            expresionAgrupacion = `
+                DATE_TRUNC(
+                    'day',
+                    fecha_registro
+                )
+            `;
+        }
+
+        const tendenciaResultado =
+            await pool.query(
+                `
+                SELECT
+                    ${expresionAgrupacion}
+                        AS periodo,
+
+                    COUNT(*)::int
+                        AS cantidad
+
+                FROM vw_turnos_detalle
+
+                WHERE id_sede = $1
+
+                  AND fecha_registro::date
+                      BETWEEN
+                      $2::date
+                      AND
+                      $3::date
+
+                  ${filtroEstado}
+
+                GROUP BY periodo
+
+                ORDER BY periodo ASC
+                `,
+                parametros
+            );
+
+        const detalleResultado =
+            await pool.query(
+                `
+                SELECT
+                    id_turno,
+                    codigo_turno,
+                    fecha_registro,
+                    nombre_tramite,
+                    estado,
+                    ventanilla_atencion
+
+                FROM vw_turnos_detalle
+
+                WHERE id_sede = $1
+
+                  AND fecha_registro::date
+                      BETWEEN
+                      $2::date
+                      AND
+                      $3::date
+
+                  ${filtroEstado}
+
+                ORDER BY
+                    fecha_registro DESC
+                `,
+                parametros
+            );
+
+        const resumenBD =
+            resumenResultado
+                .rows[0];
+
+        const total =
+            resumenBD.total;
+
+        const finalizados =
+            resumenBD.finalizados;
+
+        const porcentajeFinalizacion =
+            total > 0
+                ? Number(
+                      (
+                          (
+                              finalizados /
+                              total
+                          ) *
+                          100
+                      ).toFixed(1)
+                  )
+                : 0;
+
+        const tramiteMasSolicitado =
+            tramitesResultado
+                .rows.length > 0
+                ? tramitesResultado
+                      .rows[0]
+                : null;
+
+        const sede =
+            sedeResultado.rows[0];
+
+        return res
+            .status(200)
+            .json({
+                ok: true,
+
+                sede: {
+                    idSede:
+                        sede.id_sede,
+                    codigo:
+                        sede.codigo,
+                    nombre:
+                        sede.nombre,
+                },
+
+                filtros: {
+                    desde,
+                    hasta,
+                    estado:
+                        estadoSeleccionado,
+                    agrupacion:
+                        agrupacionSeleccionada,
+                },
+
+                resumen: {
+                    totalTurnos:
+                        total,
+
+                    finalizados:
+                        finalizados,
+
+                    ausentes:
+                        resumenBD.ausentes,
+
+                    cancelados:
+                        resumenBD.cancelados,
+
+                    enEspera:
+                        resumenBD.en_espera,
+
+                    llamados:
+                        resumenBD.llamados,
+
+                    enAtencion:
+                        resumenBD.en_atencion,
+
+                    porcentajeFinalizacion,
+                },
+
+                estadisticas: {
+                    tramiteMasSolicitado:
+                        tramiteMasSolicitado
+                            ? {
+                                  nombre:
+                                      tramiteMasSolicitado
+                                          .nombre_tramite,
+
+                                  cantidad:
+                                      tramiteMasSolicitado
+                                          .cantidad,
+                              }
+                            : null,
+                },
+
+                distribucionEstados:
+                    distribucionResultado
+                        .rows.map(
+                            (
+                                item
+                            ) => ({
+                                estado:
+                                    item.estado,
+                                cantidad:
+                                    item.cantidad,
+                            })
+                        ),
+
+                tramites:
+                    tramitesResultado
+                        .rows.map(
+                            (
+                                item
+                            ) => ({
+                                tramite:
+                                    item.nombre_tramite,
+                                cantidad:
+                                    item.cantidad,
+                            })
+                        ),
+
+                tendencia:
+                    tendenciaResultado
+                        .rows.map(
+                            (
+                                item
+                            ) => ({
+                                periodo:
+                                    item.periodo,
+                                cantidad:
+                                    item.cantidad,
+                            })
+                        ),
+
+                detalle:
+                    detalleResultado
+                        .rows.map(
+                            (
+                                turno
+                            ) => ({
+                                idTurno:
+                                    turno.id_turno,
+
+                                codigoTurno:
+                                    turno.codigo_turno,
+
+                                fechaRegistro:
+                                    turno.fecha_registro,
+
+                                tramite:
+                                    turno.nombre_tramite,
+
+                                estado:
+                                    turno.estado,
+
+                                ventanilla:
+                                    turno
+                                        .ventanilla_atencion,
+                            })
+                        ),
+            });
+    } catch (error) {
+        console.error(
+            "Error al generar reporte:",
+            error
+        );
+
+        return res
+            .status(500)
+            .json({
+                ok: false,
+
+                mensaje:
+                    "No se pudo generar el reporte.",
+
+                error:
+                    process.env
+                        .NODE_ENV ===
+                    "development"
+                        ? error.message
+                        : undefined,
+            });
+    }
+}

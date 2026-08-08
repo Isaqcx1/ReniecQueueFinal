@@ -5,6 +5,7 @@ import {
 import {
     iniciarSesionAsesor,
     obtenerDashboardAsesor,
+    obtenerReporteAsesor,
 } from "../controllers/asesorController.js";
 
 const router =
@@ -18,6 +19,10 @@ router.post(
 router.get(
     "/dashboard/:idSede",
     obtenerDashboardAsesor
+);
+router.get(
+    "/reportes/:idSede",
+    obtenerReporteAsesor
 );
 
 export default router;
