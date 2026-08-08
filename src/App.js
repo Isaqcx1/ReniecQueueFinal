@@ -12,6 +12,7 @@ import MiPerfil from "./components/MiPerfil.jsx";
 import GestionAtencion from "./components/GestionAtencion.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
 import Dashboard from "./components/Dashboard.jsx";
+import Reportes from "./components/Reportes.jsx";
 
 function LoginRoute() {
     const sesion =
@@ -72,6 +73,10 @@ export default function App() {
                             replace
                         />
                     }
+                />
+                <Route
+                    path="/reportes"
+                    element={<Reportes />}
                 />
 
             </Routes>

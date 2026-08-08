@@ -136,9 +136,7 @@ export default function MiPerfil() {
                     <button
                         className="menu-option"
                         onClick={() =>
-                            mostrarProximamente(
-                                "Reportes"
-                            )
+                            navigate("/reportes")
                         }
                     >
                         <span className="menu-icon">
@@ -148,10 +146,6 @@ export default function MiPerfil() {
                         <span>
                             Reportes
                         </span>
-
-                        <small>
-                            Próximamente
-                        </small>
                     </button>
 
                     <button

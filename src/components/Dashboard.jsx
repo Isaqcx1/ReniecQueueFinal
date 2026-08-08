@@ -40,8 +40,8 @@ export default function Dashboard() {
         asesor =
             sesionGuardada
                 ? JSON.parse(
-                      sesionGuardada
-                  )
+                    sesionGuardada
+                )
                 : null;
     } catch {
         localStorage.removeItem(
@@ -242,9 +242,7 @@ export default function Dashboard() {
                     <button
                         className="menu-option"
                         onClick={() =>
-                            mostrarProximamente(
-                                "Reportes"
-                            )
+                            navigate("/reportes")
                         }
                     >
                         <span className="menu-icon">
@@ -254,10 +252,6 @@ export default function Dashboard() {
                         <span>
                             Reportes
                         </span>
-
-                        <small>
-                            Próximamente
-                        </small>
                     </button>
 
                     <button
@@ -528,7 +522,7 @@ export default function Dashboard() {
                     )}
 
                     {cargando &&
-                    !datos ? (
+                        !datos ? (
 
                         <div className="dashboard-loading">
 
@@ -541,9 +535,9 @@ export default function Dashboard() {
                         </div>
 
                     ) : datos
-                          ?.actividadReciente
-                          ?.length >
-                      0 ? (
+                        ?.actividadReciente
+                        ?.length >
+                        0 ? (
 
                         <div className="dashboard-table-container">
 

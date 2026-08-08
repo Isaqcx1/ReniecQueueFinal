@@ -301,16 +301,16 @@ export default function GestionAtencion() {
                     <button
                         className="menu-option"
                         onClick={() =>
-                            mostrarProximamente("Reportes")
+                            navigate("/reportes")
                         }
                     >
                         <span className="menu-icon">
                             ▥
                         </span>
 
-                        <span>Reportes</span>
-
-                        <small>Próximamente</small>
+                        <span>
+                            Reportes
+                        </span>
                     </button>
 
 
