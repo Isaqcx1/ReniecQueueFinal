@@ -1876,3 +1876,156 @@ export async function obtenerHistorialTurnos(req, res) {
         });
     }
 }
+
+export async function obtenerSeguimientoTurnoPorId(
+    req,
+    res
+) {
+    try {
+        const idTurno =
+            Number(
+                req.params.idTurno
+            );
+
+        if (
+            !Number.isInteger(idTurno) ||
+            idTurno <= 0
+        ) {
+            return res.status(400).json({
+                ok: false,
+                mensaje:
+                    "El identificador del turno no es válido.",
+            });
+        }
+
+        const resultado =
+            await pool.query(
+                `
+                SELECT
+                    id_turno,
+                    codigo_turno,
+                    numero_turno,
+                    estado,
+
+                    personas_delante,
+                    tiempo_estimado_minutos,
+
+                    id_sede,
+                    codigo_sede,
+                    nombre_sede,
+
+                    id_tramite,
+                    codigo_tramite,
+                    nombre_tramite,
+
+                    ventanilla_atencion,
+
+                    fecha_registro,
+                    fecha_llamado,
+                    fecha_inicio_atencion,
+                    fecha_finalizacion
+
+                FROM vw_turnos_detalle
+
+                WHERE id_turno = $1
+                `,
+                [
+                    idTurno,
+                ]
+            );
+
+        if (
+            resultado.rows.length ===
+            0
+        ) {
+            return res.status(404).json({
+                ok: false,
+                mensaje:
+                    "El turno no existe.",
+            });
+        }
+
+        const fila =
+            resultado.rows[0];
+
+        return res.status(200).json({
+            ok: true,
+
+            turno: {
+                idTurno:
+                    fila.id_turno,
+
+                codigoTurno:
+                    fila.codigo_turno,
+
+                numeroTurno:
+                    fila.numero_turno,
+
+                estado:
+                    fila.estado,
+
+                personasDelante:
+                    Number(
+                        fila.personas_delante ??
+                            0
+                    ),
+
+                tiempoEstimadoMinutos:
+                    Number(
+                        fila.tiempo_estimado_minutos ??
+                            0
+                    ),
+
+                sede: {
+                    idSede:
+                        fila.id_sede,
+
+                    codigo:
+                        fila.codigo_sede,
+
+                    nombre:
+                        fila.nombre_sede,
+                },
+
+                tramite: {
+                    idTramite:
+                        fila.id_tramite,
+
+                    codigo:
+                        fila.codigo_tramite,
+
+                    nombre:
+                        fila.nombre_tramite,
+                },
+
+                ventanilla:
+                    fila.ventanilla_atencion,
+
+                aviso: null,
+
+                fechaRegistro:
+                    fila.fecha_registro,
+
+                fechaLlamado:
+                    fila.fecha_llamado,
+
+                fechaInicioAtencion:
+                    fila.fecha_inicio_atencion,
+
+                fechaFinalizacion:
+                    fila.fecha_finalizacion,
+            },
+        });
+    } catch (error) {
+        console.error(
+            "Error al consultar seguimiento del turno:",
+            error
+        );
+
+        return res.status(500).json({
+            ok: false,
+            mensaje:
+                "No se pudo consultar el turno.",
+        });
+    }
+}

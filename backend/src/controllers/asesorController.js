@@ -126,3 +126,208 @@ export async function iniciarSesionAsesor(req, res) {
         });
     }
 }
+export async function obtenerDashboardAsesor(req, res) {
+    try {
+        const idSede = Number(
+            req.params.idSede
+        );
+
+        if (
+            !Number.isInteger(idSede) ||
+            idSede <= 0
+        ) {
+            return res.status(400).json({
+                ok: false,
+                mensaje:
+                    "La sede indicada no es válida.",
+            });
+        }
+
+        const sedeResultado =
+            await pool.query(
+                `
+                SELECT
+                    id_sede,
+                    codigo,
+                    nombre
+                FROM sedes
+                WHERE id_sede = $1
+                LIMIT 1
+                `,
+                [idSede]
+            );
+
+        if (
+            sedeResultado.rows.length ===
+            0
+        ) {
+            return res.status(404).json({
+                ok: false,
+                mensaje:
+                    "La sede no existe.",
+            });
+        }
+
+        const resumenResultado =
+            await pool.query(
+                `
+                SELECT
+                    COUNT(*)::int
+                        AS total_hoy,
+
+                    COUNT(*) FILTER (
+                        WHERE estado = 'EN_ESPERA'
+                    )::int
+                        AS en_espera,
+
+                    COUNT(*) FILTER (
+                        WHERE estado = 'LLAMADO'
+                    )::int
+                        AS llamados,
+
+                    COUNT(*) FILTER (
+                        WHERE estado = 'EN_ATENCION'
+                    )::int
+                        AS en_atencion,
+
+                    COUNT(*) FILTER (
+                        WHERE estado = 'FINALIZADO'
+                    )::int
+                        AS finalizados,
+
+                    COUNT(*) FILTER (
+                        WHERE estado = 'AUSENTE'
+                    )::int
+                        AS ausentes,
+
+                    COUNT(*) FILTER (
+                        WHERE estado = 'CANCELADO'
+                    )::int
+                        AS cancelados
+
+                FROM vw_turnos_detalle
+
+                WHERE id_sede = $1
+                  AND fecha_registro::date =
+                      CURRENT_DATE
+                `,
+                [idSede]
+            );
+
+        const actividadResultado =
+            await pool.query(
+                `
+                SELECT
+                    id_turno,
+                    codigo_turno,
+                    estado,
+                    nombre_tramite,
+                    nombre_sede,
+                    ventanilla_atencion,
+                    fecha_registro
+
+                FROM vw_turnos_detalle
+
+                WHERE id_sede = $1
+                  AND fecha_registro::date =
+                      CURRENT_DATE
+
+                ORDER BY fecha_registro DESC
+
+                LIMIT 8
+                `,
+                [idSede]
+            );
+
+        const sede =
+            sedeResultado.rows[0];
+
+        const resumen =
+            resumenResultado.rows[0];
+
+        return res.status(200).json({
+            ok: true,
+
+            sede: {
+                idSede:
+                    sede.id_sede,
+                codigo:
+                    sede.codigo,
+                nombre:
+                    sede.nombre,
+            },
+
+            fecha:
+                new Date()
+                    .toISOString()
+                    .split("T")[0],
+
+            resumen: {
+                totalHoy:
+                    resumen.total_hoy,
+
+                enEspera:
+                    resumen.en_espera,
+
+                llamados:
+                    resumen.llamados,
+
+                enAtencion:
+                    resumen.en_atencion,
+
+                finalizados:
+                    resumen.finalizados,
+
+                ausentes:
+                    resumen.ausentes,
+
+                cancelados:
+                    resumen.cancelados,
+            },
+
+            actividadReciente:
+                actividadResultado.rows.map(
+                    (turno) => ({
+                        idTurno:
+                            turno.id_turno,
+
+                        codigoTurno:
+                            turno.codigo_turno,
+
+                        estado:
+                            turno.estado,
+
+                        tramite:
+                            turno.nombre_tramite,
+
+                        sede:
+                            turno.nombre_sede,
+
+                        ventanilla:
+                            turno
+                                .ventanilla_atencion,
+
+                        fechaRegistro:
+                            turno
+                                .fecha_registro,
+                    })
+                ),
+        });
+    } catch (error) {
+        console.error(
+            "Error al obtener dashboard:",
+            error
+        );
+
+        return res.status(500).json({
+            ok: false,
+            mensaje:
+                "No se pudo obtener la información del dashboard.",
+            error:
+                process.env.NODE_ENV ===
+                "development"
+                    ? error.message
+                    : undefined,
+        });
+    }
+}

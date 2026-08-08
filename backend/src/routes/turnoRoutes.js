@@ -8,6 +8,7 @@ import {
     obtenerTurnoActivo,
     cancelarTurno,
     obtenerHistorialTurnos,
+    obtenerSeguimientoTurnoPorId,
 } from "../controllers/turnoController.js";
 
 const router = Router();
@@ -72,6 +73,11 @@ REN-12
 router.get(
     "/sede/:idSede",
     obtenerColaPorSede
+);
+
+router.get(
+    "/:idTurno/seguimiento",
+    obtenerSeguimientoTurnoPorId
 );
 
 

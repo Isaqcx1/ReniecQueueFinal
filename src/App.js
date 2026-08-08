@@ -11,10 +11,13 @@ import Login from "./components/Login.jsx";
 import MiPerfil from "./components/MiPerfil.jsx";
 import GestionAtencion from "./components/GestionAtencion.jsx";
 import ProtectedRoute from "./components/ProtectedRoute.jsx";
+import Dashboard from "./components/Dashboard.jsx";
 
 function LoginRoute() {
     const sesion =
-        localStorage.getItem("asesorSesion");
+        localStorage.getItem(
+            "asesorSesion"
+        );
 
     if (sesion) {
         return (
@@ -39,9 +42,10 @@ export default function App() {
                 />
 
                 <Route
-                    element={<ProtectedRoute />}
+                    element={
+                        <ProtectedRoute />
+                    }
                 >
-
                     <Route
                         path="/perfil"
                         element={<MiPerfil />}
@@ -54,21 +58,10 @@ export default function App() {
                         }
                     />
 
-                    {/*
-                    Dashboard real:
-                    se desarrollará en REN-19.
-                    */}
-
                     <Route
-                        path="/panel"
-                        element={
-                            <Navigate
-                                to="/perfil"
-                                replace
-                            />
-                        }
+                        path="/dashboard"
+                        element={<Dashboard />}
                     />
-
                 </Route>
 
                 <Route

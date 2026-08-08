@@ -272,16 +272,16 @@ export default function GestionAtencion() {
                     <button
                         className="menu-option"
                         onClick={() =>
-                            mostrarProximamente("Dashboard")
+                            navigate("/dashboard")
                         }
                     >
                         <span className="menu-icon">
                             ⌂
                         </span>
 
-                        <span>Dashboard</span>
-
-                        <small>Próximamente</small>
+                        <span>
+                            Dashboard
+                        </span>
                     </button>
 
 
