@@ -8,6 +8,8 @@ import {
 
 import asesorRoutes from "./routes/asesorRoutes.js";
 import turnoRoutes from "./routes/turnoRoutes.js";
+import usuarioRoutes
+    from "./routes/usuarioRoutes.js";
 
 
 const app = express();
@@ -31,6 +33,10 @@ app.use(
 app.use(
     "/api/turnos",
     turnoRoutes
+);
+app.use(
+    "/api/usuarios",
+    usuarioRoutes
 );
 
 app.get("/", (req, res) => {
