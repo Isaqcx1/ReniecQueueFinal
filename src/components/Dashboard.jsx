@@ -100,13 +100,7 @@ export default function Dashboard() {
         });
     };
 
-    const mostrarProximamente = (
-        modulo
-    ) => {
-        alert(
-            `${modulo} será desarrollado posteriormente.`
-        );
-    };
+    
 
     const formatearEstado = (
         estado

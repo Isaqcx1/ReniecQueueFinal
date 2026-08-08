@@ -1,5 +1,6 @@
 import {
     useEffect,
+    useRef,
     useState,
 } from "react";
 
@@ -23,6 +24,7 @@ import {
     Bar,
 } from "recharts";
 
+import "./MiPerfil.css";
 import "./Reportes.css";
 
 import logo from "../img/logor.png";
@@ -35,8 +37,69 @@ import {
     generarReportePDF,
 } from "../services/reportePdfService";
 
-import "./MiPerfil.css";
-import "./Reportes.css";
+
+function obtenerFechaLocal() {
+    const fecha =
+        new Date();
+
+    const anio =
+        fecha.getFullYear();
+
+    const mes =
+        String(
+            fecha.getMonth() + 1
+        ).padStart(
+            2,
+            "0"
+        );
+
+    const dia =
+        String(
+            fecha.getDate()
+        ).padStart(
+            2,
+            "0"
+        );
+
+    return `${anio}-${mes}-${dia}`;
+}
+
+
+function obtenerUltimoDiaMes(
+    valorMes
+) {
+    const [
+        anio,
+        numeroMes,
+    ] = valorMes
+        .split("-")
+        .map(Number);
+
+    const ultimoDia =
+        new Date(
+            anio,
+            numeroMes,
+            0
+        ).getDate();
+
+    return `${valorMes}-${String(
+        ultimoDia
+    ).padStart(
+        2,
+        "0"
+    )}`;
+}
+
+
+const COLORES_ESTADOS = [
+    "#25a55f",
+    "#e67e22",
+    "#c62828",
+    "#1976d2",
+    "#54b7fe",
+    "#b36b00",
+];
+
 
 export default function Reportes() {
     const navigate =
@@ -53,8 +116,8 @@ export default function Reportes() {
         asesor =
             sesionGuardada
                 ? JSON.parse(
-                      sesionGuardada
-                  )
+                    sesionGuardada
+                )
                 : null;
     } catch {
         localStorage.removeItem(
@@ -62,10 +125,9 @@ export default function Reportes() {
         );
     }
 
+
     const hoy =
-        new Date()
-            .toISOString()
-            .split("T")[0];
+        obtenerFechaLocal();
 
     const mesActual =
         hoy.substring(
@@ -73,98 +135,121 @@ export default function Reportes() {
             7
         );
 
-    const [tipoPeriodo, setTipoPeriodo] =
-        useState("DIA");
 
-    const [fechaDia, setFechaDia] =
-        useState(hoy);
+    const graficoEvolucionRef =
+        useRef(null);
 
-    const [mes, setMes] =
-        useState(mesActual);
+    const graficoEstadosRef =
+        useRef(null);
 
-    const [desde, setDesde] =
-        useState(hoy);
+    const graficoTramitesRef =
+        useRef(null);
 
-    const [hasta, setHasta] =
-        useState(hoy);
 
-    const [estado, setEstado] =
-        useState("TODOS");
+    const [
+        generandoPdf,
+        setGenerandoPdf,
+    ] = useState(false);
 
-    const [reporte, setReporte] =
-        useState(null);
+    const [
+        tipoPeriodo,
+        setTipoPeriodo,
+    ] = useState("DIA");
 
-    const [cargando, setCargando] =
-        useState(false);
+    const [
+        fechaDia,
+        setFechaDia,
+    ] = useState(hoy);
 
-    const [mensaje, setMensaje] =
-        useState("");
+    const [
+        mes,
+        setMes,
+    ] = useState(
+        mesActual
+    );
 
-            const obtenerUltimoDiaMes = (
-        valorMes
-    ) => {
-        const [
-            anio,
-            numeroMes,
-        ] = valorMes
-            .split("-")
-            .map(Number);
+    const [
+        desde,
+        setDesde,
+    ] = useState(hoy);
 
-        const ultimoDia =
-            new Date(
-                anio,
-                numeroMes,
-                0
-            ).getDate();
+    const [
+        hasta,
+        setHasta,
+    ] = useState(hoy);
 
-        return `${valorMes}-${String(
-            ultimoDia
-        ).padStart(2, "0")}`;
-    };
+    const [
+        estado,
+        setEstado,
+    ] = useState(
+        "TODOS"
+    );
 
-    const prepararFiltros = () => {
-        if (
-            tipoPeriodo ===
-            "DIA"
-        ) {
+    const [
+        reporte,
+        setReporte,
+    ] = useState(null);
+
+    const [
+        cargando,
+        setCargando,
+    ] = useState(false);
+
+    const [
+        mensaje,
+        setMensaje,
+    ] = useState("");
+
+
+    const obtenerFiltrosActuales =
+        () => {
+            if (
+                tipoPeriodo ===
+                "DIA"
+            ) {
+                return {
+                    desde:
+                        fechaDia,
+
+                    hasta:
+                        fechaDia,
+
+                    estado,
+
+                    agrupacion:
+                        "HORA",
+                };
+            }
+
+            if (
+                tipoPeriodo ===
+                "MES"
+            ) {
+                return {
+                    desde:
+                        `${mes}-01`,
+
+                    hasta:
+                        obtenerUltimoDiaMes(
+                            mes
+                        ),
+
+                    estado,
+
+                    agrupacion:
+                        "DIA",
+                };
+            }
+
             return {
-                desde:
-                    fechaDia,
-                hasta:
-                    fechaDia,
-                estado,
-                agrupacion:
-                    "HORA",
-            };
-        }
-
-        if (
-            tipoPeriodo ===
-            "MES"
-        ) {
-            return {
-                desde:
-                    `${mes}-01`,
-
-                hasta:
-                    obtenerUltimoDiaMes(
-                        mes
-                    ),
-
+                desde,
+                hasta,
                 estado,
                 agrupacion:
                     "DIA",
             };
-        }
-
-        return {
-            desde,
-            hasta,
-            estado,
-            agrupacion:
-                "DIA",
         };
-    };
+
 
     const consultarReporte =
         async () => {
@@ -179,7 +264,18 @@ export default function Reportes() {
             }
 
             const filtros =
-                prepararFiltros();
+                obtenerFiltrosActuales();
+
+            if (
+                !filtros.desde ||
+                !filtros.hasta
+            ) {
+                setMensaje(
+                    "Debe seleccionar las fechas del reporte."
+                );
+
+                return;
+            }
 
             if (
                 filtros.desde >
@@ -217,7 +313,8 @@ export default function Reportes() {
                 );
 
                 setMensaje(
-                    error instanceof Error
+                    error instanceof
+                        Error
                         ? error.message
                         : "No se pudo generar el reporte."
                 );
@@ -228,149 +325,303 @@ export default function Reportes() {
             }
         };
 
+
+    /*
+     * Carga inicial.
+     *
+     * Se consulta únicamente el día actual
+     * al ingresar a Reportes.
+     *
+     * Los cambios posteriores en filtros
+     * se aplican usando el botón
+     * Generar reporte.
+     */
     useEffect(() => {
-        consultarReporte();
-    }, []);
-
-    const cerrarSesion = () => {
-        localStorage.removeItem(
-            "asesorSesion"
-        );
-
-        navigate("/", {
-            replace: true,
-        });
-    };
-        const formatearEstado = (
-        valor
-    ) => {
-        const estados = {
-            EN_ESPERA:
-                "En espera",
-
-            LLAMADO:
-                "Llamado",
-
-            EN_ATENCION:
-                "En atención",
-
-            FINALIZADO:
-                "Finalizado",
-
-            AUSENTE:
-                "Ausente",
-
-            CANCELADO:
-                "Cancelado",
-        };
-
-        return (
-            estados[valor] ||
-            valor
-        );
-    };
-
-    const formatearPeriodo = (
-        valor
-    ) => {
-        const fecha =
-            new Date(valor);
-
         if (
-            tipoPeriodo ===
-            "DIA"
+            !asesor?.idSede
         ) {
-            return fecha
-                .toLocaleTimeString(
-                    "es-PE",
-                    {
-                        hour:
-                            "2-digit",
-                        minute:
-                            "2-digit",
-                    }
-                );
+            return;
         }
 
-        return fecha
-            .toLocaleDateString(
+        let componenteActivo =
+            true;
+
+        const cargarReporteInicial =
+            async () => {
+                try {
+                    setCargando(
+                        true
+                    );
+
+                    setMensaje(
+                        ""
+                    );
+
+                    const datos =
+                        await obtenerReporte(
+                            asesor.idSede,
+                            {
+                                desde:
+                                    hoy,
+
+                                hasta:
+                                    hoy,
+
+                                estado:
+                                    "TODOS",
+
+                                agrupacion:
+                                    "HORA",
+                            }
+                        );
+
+                    if (
+                        componenteActivo
+                    ) {
+                        setReporte(
+                            datos
+                        );
+                    }
+                } catch (error) {
+                    console.error(
+                        "Error al cargar reporte inicial:",
+                        error
+                    );
+
+                    if (
+                        componenteActivo
+                    ) {
+                        setMensaje(
+                            error instanceof
+                                Error
+                                ? error.message
+                                : "No se pudo cargar el reporte inicial."
+                        );
+                    }
+                } finally {
+                    if (
+                        componenteActivo
+                    ) {
+                        setCargando(
+                            false
+                        );
+                    }
+                }
+            };
+
+        cargarReporteInicial();
+
+        return () => {
+            componenteActivo =
+                false;
+        };
+    }, [
+        asesor?.idSede,
+        hoy,
+    ]);
+
+
+    const descargarReporte =
+        async () => {
+            if (
+                !reporte
+            ) {
+                return;
+            }
+
+            try {
+                setGenerandoPdf(
+                    true
+                );
+
+                await generarReportePDF(
+                    reporte,
+                    {
+                        evolucion:
+                            graficoEvolucionRef.current,
+
+                        estados:
+                            graficoEstadosRef.current,
+
+                        tramites:
+                            graficoTramitesRef.current,
+                    }
+                );
+            } catch (error) {
+                console.error(
+                    "Error al generar PDF:",
+                    error
+                );
+
+                alert(
+                    "No se pudo generar el PDF."
+                );
+            } finally {
+                setGenerandoPdf(
+                    false
+                );
+            }
+        };
+
+
+    const cerrarSesion =
+        () => {
+            localStorage.removeItem(
+                "asesorSesion"
+            );
+
+            navigate(
+                "/",
+                {
+                    replace: true,
+                }
+            );
+        };
+
+
+    const formatearEstado =
+        (valor) => {
+            const estados = {
+                EN_ESPERA:
+                    "En espera",
+
+                LLAMADO:
+                    "Llamado",
+
+                EN_ATENCION:
+                    "En atención",
+
+                FINALIZADO:
+                    "Finalizado",
+
+                AUSENTE:
+                    "Ausente",
+
+                CANCELADO:
+                    "Cancelado",
+            };
+
+            return (
+                estados[valor] ||
+                valor
+            );
+        };
+
+
+    const formatearPeriodo =
+        (valor) => {
+            const fecha =
+                new Date(
+                    valor
+                );
+
+            if (
+                tipoPeriodo ===
+                "DIA"
+            ) {
+                return fecha
+                    .toLocaleTimeString(
+                        "es-PE",
+                        {
+                            hour:
+                                "2-digit",
+
+                            minute:
+                                "2-digit",
+                        }
+                    );
+            }
+
+            return fecha
+                .toLocaleDateString(
+                    "es-PE",
+                    {
+                        day:
+                            "2-digit",
+
+                        month:
+                            "short",
+                    }
+                );
+        };
+
+
+    const formatearFechaHora =
+        (valor) => {
+            if (
+                !valor
+            ) {
+                return "-";
+            }
+
+            return new Date(
+                valor
+            ).toLocaleString(
                 "es-PE",
                 {
                     day:
                         "2-digit",
+
                     month:
-                        "short",
+                        "2-digit",
+
+                    year:
+                        "numeric",
+
+                    hour:
+                        "2-digit",
+
+                    minute:
+                        "2-digit",
                 }
             );
-    };
-
-    const formatearFechaHora = (
-        valor
-    ) => {
-        if (!valor) {
-            return "-";
-        }
-
-        return new Date(
-            valor
-        ).toLocaleString(
-            "es-PE",
-            {
-                day:
-                    "2-digit",
-                month:
-                    "2-digit",
-                year:
-                    "numeric",
-                hour:
-                    "2-digit",
-                minute:
-                    "2-digit",
-            }
-        );
-    };
-
-    const obtenerClaseEstado = (
-        valor
-    ) => {
-        const clases = {
-            EN_ESPERA:
-                "status-waiting",
-
-            LLAMADO:
-                "status-called",
-
-            EN_ATENCION:
-                "status-attending",
-
-            FINALIZADO:
-                "status-finished",
-
-            AUSENTE:
-                "status-absent",
-
-            CANCELADO:
-                "status-cancelled",
         };
 
-        return (
-            clases[valor] ||
-            ""
-        );
-    };
+
+    const obtenerClaseEstado =
+        (valor) => {
+            const clases = {
+                EN_ESPERA:
+                    "status-waiting",
+
+                LLAMADO:
+                    "status-called",
+
+                EN_ATENCION:
+                    "status-attending",
+
+                FINALIZADO:
+                    "status-finished",
+
+                AUSENTE:
+                    "status-absent",
+
+                CANCELADO:
+                    "status-cancelled",
+            };
+
+            return (
+                clases[valor] ||
+                ""
+            );
+        };
+
 
     const tendencia =
-        reporte?.tendencia?.map(
-            (item) => ({
-                periodo:
-                    formatearPeriodo(
-                        item.periodo
-                    ),
+        reporte
+            ?.tendencia
+            ?.map(
+                (item) => ({
+                    periodo:
+                        formatearPeriodo(
+                            item.periodo
+                        ),
 
-                cantidad:
-                    item.cantidad,
-            })
-        ) || [];
+                    cantidad:
+                        item.cantidad,
+                })
+            ) || [];
+
 
     const distribucionEstados =
         reporte
@@ -387,14 +638,18 @@ export default function Reportes() {
                 })
             ) || [];
 
+
     const tramites =
         reporte?.tramites ||
         [];
 
+
     if (!asesor) {
         return null;
     }
-        const resumen =
+
+
+    const resumen =
         reporte?.resumen || {
             totalTurnos: 0,
             finalizados: 0,
@@ -403,18 +658,11 @@ export default function Reportes() {
             porcentajeFinalizacion: 0,
         };
 
-    const tramiteMasSolicitado =
-        reporte?.estadisticas
-            ?.tramiteMasSolicitado;
 
-    const COLORES_ESTADOS = [
-        "#25a55f",
-        "#e67e22",
-        "#c62828",
-        "#1976d2",
-        "#54b7fe",
-        "#b36b00",
-    ];
+    const tramiteMasSolicitado =
+        reporte
+            ?.estadisticas
+            ?.tramiteMasSolicitado;
 
     return (
         <div className="dashboard">
@@ -628,7 +876,7 @@ export default function Reportes() {
                         <button
                             className={
                                 tipoPeriodo ===
-                                "DIA"
+                                    "DIA"
                                     ? "period-button active"
                                     : "period-button"
                             }
@@ -644,7 +892,7 @@ export default function Reportes() {
                         <button
                             className={
                                 tipoPeriodo ===
-                                "MES"
+                                    "MES"
                                     ? "period-button active"
                                     : "period-button"
                             }
@@ -660,7 +908,7 @@ export default function Reportes() {
                         <button
                             className={
                                 tipoPeriodo ===
-                                "RANGO"
+                                    "RANGO"
                                     ? "period-button active"
                                     : "period-button"
                             }
@@ -679,110 +927,110 @@ export default function Reportes() {
 
                         {tipoPeriodo ===
                             "DIA" && (
-                            <div className="filter-field">
+                                <div className="filter-field">
 
-                                <label>
-                                    Fecha
-                                </label>
+                                    <label>
+                                        Fecha
+                                    </label>
 
-                                <input
-                                    type="date"
-                                    value={
-                                        fechaDia
-                                    }
-                                    onChange={(
-                                        event
-                                    ) =>
-                                        setFechaDia(
+                                    <input
+                                        type="date"
+                                        value={
+                                            fechaDia
+                                        }
+                                        onChange={(
                                             event
-                                                .target
-                                                .value
-                                        )
-                                    }
-                                />
+                                        ) =>
+                                            setFechaDia(
+                                                event
+                                                    .target
+                                                    .value
+                                            )
+                                        }
+                                    />
 
-                            </div>
-                        )}
+                                </div>
+                            )}
 
                         {tipoPeriodo ===
                             "MES" && (
-                            <div className="filter-field">
+                                <div className="filter-field">
 
-                                <label>
-                                    Mes
-                                </label>
+                                    <label>
+                                        Mes
+                                    </label>
 
-                                <input
-                                    type="month"
-                                    value={
-                                        mes
-                                    }
-                                    onChange={(
-                                        event
-                                    ) =>
-                                        setMes(
+                                    <input
+                                        type="month"
+                                        value={
+                                            mes
+                                        }
+                                        onChange={(
                                             event
-                                                .target
-                                                .value
-                                        )
-                                    }
-                                />
+                                        ) =>
+                                            setMes(
+                                                event
+                                                    .target
+                                                    .value
+                                            )
+                                        }
+                                    />
 
-                            </div>
-                        )}
+                                </div>
+                            )}
 
                         {tipoPeriodo ===
                             "RANGO" && (
-                            <>
-                                <div className="filter-field">
+                                <>
+                                    <div className="filter-field">
 
-                                    <label>
-                                        Desde
-                                    </label>
+                                        <label>
+                                            Desde
+                                        </label>
 
-                                    <input
-                                        type="date"
-                                        value={
-                                            desde
-                                        }
-                                        onChange={(
-                                            event
-                                        ) =>
-                                            setDesde(
+                                        <input
+                                            type="date"
+                                            value={
+                                                desde
+                                            }
+                                            onChange={(
                                                 event
-                                                    .target
-                                                    .value
-                                            )
-                                        }
-                                    />
+                                            ) =>
+                                                setDesde(
+                                                    event
+                                                        .target
+                                                        .value
+                                                )
+                                            }
+                                        />
 
-                                </div>
+                                    </div>
 
-                                <div className="filter-field">
+                                    <div className="filter-field">
 
-                                    <label>
-                                        Hasta
-                                    </label>
+                                        <label>
+                                            Hasta
+                                        </label>
 
-                                    <input
-                                        type="date"
-                                        value={
-                                            hasta
-                                        }
-                                        onChange={(
-                                            event
-                                        ) =>
-                                            setHasta(
+                                        <input
+                                            type="date"
+                                            value={
+                                                hasta
+                                            }
+                                            onChange={(
                                                 event
-                                                    .target
-                                                    .value
-                                            )
-                                        }
-                                    />
+                                            ) =>
+                                                setHasta(
+                                                    event
+                                                        .target
+                                                        .value
+                                                )
+                                            }
+                                        />
 
-                                </div>
-                            </>
-                        )}
+                                    </div>
+                                </>
+                            )}
 
                         <div className="filter-field">
 
@@ -860,7 +1108,7 @@ export default function Reportes() {
                 </section>
 
                 {cargando &&
-                !reporte ? (
+                    !reporte ? (
 
                     <section className="reportes-loading">
 
@@ -891,19 +1139,17 @@ export default function Reportes() {
 
                             <button
                                 className="download-report-button"
-                                onClick={() =>
-                                    generarReportePDF(
-                                        reporte
-                                    )
+                                onClick={
+                                    descargarReporte
                                 }
                                 disabled={
-                                    reporte
-                                        .detalle
-                                        .length ===
-                                    0
+                                    reporte.detalle.length === 0 ||
+                                    generandoPdf
                                 }
                             >
-                                Descargar PDF
+                                {generandoPdf
+                                    ? "Generando PDF..."
+                                    : "Descargar PDF"}
                             </button>
 
                         </div>
@@ -1044,7 +1290,12 @@ export default function Reportes() {
 
                         <section className="reportes-charts-grid">
 
-                            <article className="report-chart-card report-chart-wide">
+                            <article
+                                className="report-chart-card report-chart-wide"
+                                ref={
+                                    graficoEvolucionRef
+                                }
+                            >
 
                                 <div className="report-chart-header">
 
@@ -1061,7 +1312,7 @@ export default function Reportes() {
                                 </div>
 
                                 {tendencia.length >
-                                0 ? (
+                                    0 ? (
                                     <ResponsiveContainer
                                         width="100%"
                                         height={290}
@@ -1118,7 +1369,12 @@ export default function Reportes() {
 
                             </article>
 
-                            <article className="report-chart-card">
+                            <article
+                                className="report-chart-card"
+                                ref={
+                                    graficoEstadosRef
+                                }
+                            >
 
                                 <div className="report-chart-header">
 
@@ -1134,7 +1390,7 @@ export default function Reportes() {
                                 </div>
 
                                 {distribucionEstados.length >
-                                0 ? (
+                                    0 ? (
                                     <ResponsiveContainer
                                         width="100%"
                                         height={290}
@@ -1165,8 +1421,8 @@ export default function Reportes() {
                                                             }
                                                             fill={
                                                                 COLORES_ESTADOS[
-                                                                    index %
-                                                                        COLORES_ESTADOS.length
+                                                                index %
+                                                                COLORES_ESTADOS.length
                                                                 ]
                                                             }
                                                         />
@@ -1189,7 +1445,12 @@ export default function Reportes() {
 
                             </article>
 
-                            <article className="report-chart-card report-chart-full">
+                            <article
+                                className="report-chart-card report-chart-full"
+                                ref={
+                                    graficoTramitesRef
+                                }
+                            >
 
                                 <div className="report-chart-header">
 
@@ -1206,7 +1467,7 @@ export default function Reportes() {
                                 </div>
 
                                 {tramites.length >
-                                0 ? (
+                                    0 ? (
                                     <ResponsiveContainer
                                         width="100%"
                                         height={300}
@@ -1296,7 +1557,7 @@ export default function Reportes() {
 
                             {reporte.detalle
                                 .length ===
-                            0 ? (
+                                0 ? (
 
                                 <div className="reportes-empty">
 

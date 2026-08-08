@@ -207,11 +207,7 @@ export default function GestionAtencion() {
         });
     };
 
-    const mostrarProximamente = (modulo) => {
-        alert(
-            `${modulo} será desarrollado posteriormente.`
-        );
-    };
+    
 
     const formatearEstado = (estado) => {
         const estados = {

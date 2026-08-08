@@ -40,13 +40,7 @@ export default function MiPerfil() {
         });
     };
 
-    const mostrarProximamente = (
-        modulo
-    ) => {
-        alert(
-            `${modulo} será desarrollado posteriormente.`
-        );
-    };
+    
 
     const formatearTurnoTrabajo = (
         turno
