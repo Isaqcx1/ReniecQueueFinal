@@ -10,7 +10,37 @@ import asesorRoutes from "./routes/asesorRoutes.js";
 import turnoRoutes from "./routes/turnoRoutes.js";
 import usuarioRoutes
     from "./routes/usuarioRoutes.js";
+import sedeRoutes from "./routes/sedeRoutes.js";
+import path from "path";
+import { fileURLToPath } from "url";
 
+
+const __filename =
+    fileURLToPath(import.meta.url);
+
+const __dirname =
+    path.dirname(__filename);
+
+const publicPath =
+    path.join(
+        __dirname,
+        "../public"
+    );
+
+    console.log(
+    "Ruta public:",
+    publicPath
+);
+
+console.log(
+    "Ruta imagen:",
+    path.join(
+        publicPath,
+        "images",
+        "sedes",
+        "san-isidro.jpg"
+    )
+);
 
 const app = express();
 
@@ -37,6 +67,10 @@ app.use(
 app.use(
     "/api/usuarios",
     usuarioRoutes
+);
+app.use(
+    "/api/sedes",
+    sedeRoutes
 );
 
 app.get("/", (req, res) => {
@@ -72,6 +106,15 @@ app.get("/api/health", async (req, res) => {
         });
     }
 });
+app.use(
+    "/images",
+    express.static(
+        path.join(
+            publicPath,
+            "images"
+        )
+    )
+);
 
 /*
 Esta parte siempre debe quedar al final.
@@ -82,5 +125,7 @@ app.use((req, res) => {
         mensaje: "Ruta no encontrada.",
     });
 });
+
+
 
 export default app;
